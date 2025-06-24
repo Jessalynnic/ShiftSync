@@ -125,6 +125,7 @@ export default function LandingPage() {
             <li><a href="#how" className="hover:text-blue-500 transition">How it Works</a></li>
             <li><a href="#pricing" className="hover:text-blue-500 transition">Pricing</a></li>
             <li><a href="#faq" className="hover:text-blue-500 transition">FAQ</a></li>
+            <li><a href="/login" className="hover:text-blue-500 transition">Login</a></li>
             <li><a href="/signup" className="ml-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg font-semibold hover:bg-blue-200 transition">Get Started</a></li>
           </ul>
         </nav>
