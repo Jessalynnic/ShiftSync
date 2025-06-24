@@ -1,5 +1,7 @@
 "use client";
 import { useState } from 'react';
+import { loginBusiness } from './loginBusiness';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const [isBusinessLogin, setIsBusinessLogin] = useState(false);
@@ -9,6 +11,8 @@ export default function LoginPage() {
   const [businessEmail, setBusinessEmail] = useState('');
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
+  const [success, setSuccess] = useState(false);
+  const router = useRouter();
 
   const switchLogin = (type) => {
     setIsBusinessLogin(type === 'Business');
@@ -19,6 +23,22 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess(false);
+    if (isBusinessLogin) {
+      const { success, message } = await loginBusiness(businessEmail, password);
+      if (!success) {
+        setError(message);
+        setLoading(false);
+        return;
+      }
+      setSuccess(true);
+      setLoading(false);
+      setTimeout(() => {
+        router.push('/business-dashboard');
+      }, 1000);
+      return;
+    }
+    // ...existing employee login logic or placeholder...
     setTimeout(() => {
       setLoading(false);
     }, 2000);
@@ -124,6 +144,11 @@ export default function LoginPage() {
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                   {error}
+                </div>
+              )}
+              {success && (
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm mt-4 text-center">
+                  Sign in successful!
                 </div>
               )}
             </form>
