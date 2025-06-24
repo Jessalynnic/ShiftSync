@@ -1,9 +1,13 @@
 "use client";
 import { useState } from 'react';
+import { supabase } from '../../supabaseClient';
+import { useRouter } from 'next/navigation';
+import { businessSignup } from './businessSignup';
 
 export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   const [businessName, setBusinessName] = useState('');
   const [email, setEmail] = useState('');
@@ -12,16 +16,31 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const router = useRouter();
+
   const handleSignup = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess(false);
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
     setLoading(true);
-    setTimeout(() => {
+    const { success, error: signupError } = await businessSignup({
+      email,
+      password,
+      businessName,
+    });
+    if (!success) {
+      setError(signupError);
       setLoading(false);
+      return;
+    }
+    setSuccess(true);
+    setLoading(false);
+    setTimeout(() => {
+      router.push('/login');
     }, 2000);
   };
 
@@ -189,6 +208,11 @@ export default function SignupPage() {
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                   {error}
+                </div>
+              )}
+              {success && (
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm mt-4 text-center">
+                  Registration successful! Please check your email to confirm your account. Redirecting to login...
                 </div>
               )}
             </form>
