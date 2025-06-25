@@ -1,7 +1,21 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function LandingPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const token = searchParams.get('confirmation_token');
+    const type = searchParams.get('type');
+    const email = searchParams.get('email');
+    if (token && type) {
+      // Redirect to /auth-callback with the same query params
+      router.replace(`/auth-callback?confirmation_token=${token}&type=${type}${email ? `&email=${encodeURIComponent(email)}` : ''}`);
+    }
+  }, [router, searchParams]);
+
   // SVG logo symbol for ShiftSync
   const LogoSymbol = (
     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">

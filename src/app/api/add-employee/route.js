@@ -33,11 +33,8 @@ export async function POST(request) {
     const business_name = businessData?.business_name || 'ShiftSync';
 
     // 4. Create user in Supabase Auth (admin) with all metadata
-    const { data: user, error: signUpError } = await supabase.auth.admin.createUser({
-      email,
-      password: tempPassword,
-      email_confirm: false,
-      user_metadata: {
+    const createUserResponse = await supabase.auth.admin.inviteUserByEmail(email, {
+      data: {
         first_name: firstName,
         last_name: lastName,
         dob,
@@ -50,7 +47,31 @@ export async function POST(request) {
         temp_password: tempPassword,
       }
     });
+    const { data: user, error: signUpError } = createUserResponse;
     if (signUpError) throw new Error(signUpError.message);
+
+    // 5. Add employee to the employee table
+    const { data: employeeData, error: employeeError } = await supabase
+      .from('employee')
+      .insert({
+        emp_id,
+        user_id: user.user.id,
+        business_id: businessId,
+        role_id: role,
+        first_name: firstName,
+        last_name: lastName,
+        email_address: email,
+        last4ssn: ssn,
+        dob,
+        is_active: true,
+        full_time: employmentType === 'Full-Time',
+        // created_at and updated_at will default
+      });
+    
+    if (employeeError) {
+      console.error('Error adding employee to table:', employeeError);
+      throw new Error(`Failed to add employee to database: ${employeeError.message}`);
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {
