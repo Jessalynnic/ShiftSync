@@ -17,14 +17,14 @@ export async function POST(request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // 1. Generate unique emp_id
+    // Generate unique emp_id
     const emp_id = await generateUniqueEmpId();
 
-    // 2. Generate temp password (MMDD + YY + last4ssn)
+    // Generate temp password (MMDD + YY + last4ssn)
     const dobDigits = dob.replace(/\D/g, '');
     const tempPassword = `${dobDigits.slice(2, 4)}${dobDigits.slice(0, 2)}${dobDigits.slice(4, 6)}${ssn}`;
 
-    // 3. Fetch business name
+    // Fetch business name
     const { data: businessData } = await supabase
       .from('business')
       .select('business_name')
@@ -32,7 +32,7 @@ export async function POST(request) {
       .single();
     const business_name = businessData?.business_name || 'ShiftSync';
 
-    // 4. Create user in Supabase Auth (admin) with all metadata
+    // Create user in Supabase Auth (admin) with all metadata
     const createUserResponse = await supabase.auth.admin.inviteUserByEmail(email, {
       data: {
         first_name: firstName,
@@ -50,7 +50,7 @@ export async function POST(request) {
     const { data: user, error: signUpError } = createUserResponse;
     if (signUpError) throw new Error(signUpError.message);
 
-    // 5. Add employee to the employee table
+    // Add employee to the employee table
     const { data: employeeData, error: employeeError } = await supabase
       .from('employee')
       .insert({
@@ -65,7 +65,6 @@ export async function POST(request) {
         dob,
         is_active: true,
         full_time: employmentType === 'Full-Time',
-        // created_at and updated_at will default
       });
     
     if (employeeError) {
