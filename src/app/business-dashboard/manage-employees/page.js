@@ -4,7 +4,6 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
 import BulkAddEmployeesForm from "./BulkAddEmployeesForm";
 import RecentlyAddedEmployeesTable from "./RecentlyAddedEmployeesTable";
-import OnboardingEmailEditor from "./OnboardingEmailEditor";
 import { supabase } from '../../../supabaseClient';
 import Sidebar from '../components/Sidebar';
 import DashboardHeader from '../components/DashboardHeader';
@@ -78,10 +77,6 @@ export default function ManageEmployeesPage() {
           <section className="mb-10">
             <h2 className="text-xl font-semibold mb-4">Recently Added Employees</h2>
             <RecentlyAddedEmployeesTable />
-          </section>
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Onboarding Email Editor</h2>
-            <OnboardingEmailEditor />
           </section>
         </div>
 

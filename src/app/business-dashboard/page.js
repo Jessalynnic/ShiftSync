@@ -26,12 +26,18 @@ const MegaphoneIcon = () => (
   </svg>
 );
 
-function OverviewCard({ title, value, icon }) {
+function OverviewCard({ title, value, icon, loading = false }) {
   return (
     <div className="flex items-center gap-4 bg-white rounded-2xl shadow p-6 min-w-[180px]">
       <div>{icon}</div>
       <div>
-        <div className="text-2xl font-bold text-blue-800">{value}</div>
+        <div className="text-2xl font-bold text-blue-800">
+          {loading ? (
+            <div className="animate-pulse bg-gray-200 h-8 w-12 rounded"></div>
+          ) : (
+            value
+          )}
+        </div>
         <div className="text-blue-500 text-sm font-medium">{title}</div>
       </div>
     </div>
@@ -47,10 +53,51 @@ export default function BusinessDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [addEmpModalOpen, setAddEmpModalOpen] = useState(false);
   const [businessId, setBusinessId] = useState(null);
+  const [employeeCount, setEmployeeCount] = useState(0);
+  const [loadingCount, setLoadingCount] = useState(true);
 
   useEffect(() => {
     getBusinessIdForCurrentUser().then(setBusinessId);
   }, []);
+
+  useEffect(() => {
+    if (!businessId) return;
+
+    async function fetchEmployeeCount() {
+      setLoadingCount(true);
+      try {
+        const response = await fetch(`/api/get-employee-count?businessId=${businessId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+          setEmployeeCount(result.count);
+        } else {
+          console.error('Failed to fetch employee count:', result.error);
+        }
+      } catch (err) {
+        console.error('Error fetching employee count:', err);
+      } finally {
+        setLoadingCount(false);
+      }
+    }
+
+    fetchEmployeeCount();
+  }, [businessId]);
+
+  const refreshEmployeeCount = async () => {
+    if (!businessId) return;
+    
+    try {
+      const response = await fetch(`/api/get-employee-count?businessId=${businessId}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setEmployeeCount(result.count);
+      }
+    } catch (err) {
+      console.error('Error refreshing employee count:', err);
+    }
+  };
 
   const handleLogout = async () => {
     setLoading(true);
@@ -81,7 +128,7 @@ export default function BusinessDashboard() {
         <div className="flex-1 p-6">
           {/* Overview Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <OverviewCard title="Total Employees" value="24" icon={<UsersIcon />} />
+            <OverviewCard title="Total Employees" value={employeeCount} icon={<UsersIcon />} loading={loadingCount} />
             <OverviewCard title="Upcoming Shifts" value="8" icon={<CalendarIcon />} />
             <OverviewCard title="Pending Requests" value="3" icon={<HourglassIcon />} />
             <OverviewCard title="Announcements" value="2" icon={<MegaphoneIcon />} />
@@ -220,7 +267,14 @@ export default function BusinessDashboard() {
       )}
 
       {businessId && (
-        <AddEmployeeModal open={addEmpModalOpen} onClose={() => setAddEmpModalOpen(false)} businessId={businessId} />
+        <AddEmployeeModal 
+          open={addEmpModalOpen} 
+          onClose={() => {
+            setAddEmpModalOpen(false);
+            refreshEmployeeCount(); // Refresh count when modal closes
+          }} 
+          businessId={businessId} 
+        />
       )}
     </div>
   );

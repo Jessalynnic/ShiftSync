@@ -112,7 +112,7 @@ export default function RecentlyAddedEmployeesTable() {
 
   if (loading) {
     return (
-      <div className="border rounded-lg bg-white shadow-sm">
+      <div className="rounded-lg bg-white shadow-sm">
         <div className="p-6">
           <div className="animate-pulse">
             <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>

@@ -39,7 +39,7 @@ export default function Sidebar({ pathname, router, sidebarOpen, setSidebarOpen 
           <SidebarItem icon={<EmployeesIcon />} label="Employees" active={pathname === "/business-dashboard/manage-employees"} onClick={() => router.push("/business-dashboard/manage-employees")} />
           <SidebarItem icon={<RequestsIcon />} label="Requests" />
           <SidebarItem icon={<ReportsIcon />} label="Reports" />
-          <SidebarItem icon={<SettingsIcon />} label="Settings" />
+          <SidebarItem icon={<SettingsIcon />} label="Settings" active={pathname === "/business-dashboard/settings"} onClick={() => router.push("/business-dashboard/settings")} />
         </nav>
 
         {/* User Profile */}
