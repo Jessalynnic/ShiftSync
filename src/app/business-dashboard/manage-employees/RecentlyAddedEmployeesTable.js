@@ -231,6 +231,15 @@ export default function RecentlyAddedEmployeesTable() {
                         {sendingOnboarding[employee.emp_id] ? 'Sending...' : 'Send'}
                       </button>
                     )}
+                    {employee.onboarding_sent && (
+                      <button
+                        onClick={() => sendOnboardingEmail(employee)}
+                        disabled={sendingOnboarding[employee.emp_id]}
+                        className="ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {sendingOnboarding[employee.emp_id] ? 'Sending...' : 'Resend'}
+                      </button>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

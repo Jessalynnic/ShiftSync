@@ -30,6 +30,7 @@ export async function GET(request) {
         created_at,
         role_id,
         user_id,
+        onboarding_email_sent_at,
         roles(role_name)
       `)
       .eq('business_id', businessId)
@@ -48,7 +49,7 @@ export async function GET(request) {
       return {
         ...emp,
         email_confirmed: authUser?.email_confirmed_at ? true : false,
-        onboarding_sent: false // TODO: Track this in your database
+        onboarding_sent: !!emp.onboarding_email_sent_at
       };
     });
 

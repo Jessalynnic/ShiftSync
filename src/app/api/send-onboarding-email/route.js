@@ -57,6 +57,17 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: data.error || 'Failed to send onboarding email.' }, { status: 500 });
     }
 
+    // Record that the onboarding email was sent
+    const { error: updateError } = await supabase
+      .from('employee')
+      .update({ onboarding_email_sent_at: new Date().toISOString() })
+      .eq('emp_id', emp_id);
+
+    if (updateError) {
+      console.error('Error updating onboarding email status:', updateError);
+      // Don't fail the request, just log the error
+    }
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('API error:', err);
