@@ -25,6 +25,49 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Custom scrollbar styling */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
+}
+
+/* Subtle styled scrollbar for desktop */
+.scrollbar-styled::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-styled::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 4px;
+}
+
+.scrollbar-styled::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.scrollbar-styled::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Hide scrollbar on mobile devices */
+@media (max-width: 768px) {
+  .scrollbar-styled {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-styled::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @keyframes shimmer {
   0% { background-position: -400px 0; }
   100% { background-position: 400px 0; }
