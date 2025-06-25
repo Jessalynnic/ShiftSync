@@ -1,7 +1,9 @@
 "use client";
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import AddEmployeeModal from './AddEmployeeModal';
+import { getBusinessIdForCurrentUser } from './roleUtils';
 
 // Placeholder SVG icons (Heroicons/Material)
 const UsersIcon = () => (
@@ -90,6 +92,12 @@ export default function BusinessDashboard() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [addEmpModalOpen, setAddEmpModalOpen] = useState(false);
+  const [businessId, setBusinessId] = useState(null);
+
+  useEffect(() => {
+    getBusinessIdForCurrentUser().then(setBusinessId);
+  }, []);
 
   const handleLogout = async () => {
     setLoading(true);
@@ -226,11 +234,11 @@ export default function BusinessDashboard() {
               {/* Quick Actions */}
               <div className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-2xl shadow-lg p-6 flex flex-col gap-4">
                 <span className="text-xl font-bold text-blue-800 mb-2">Quick Actions</span>
-                <button className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-full py-2 px-6 transition-all shadow">
+                <button className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-full py-2 px-6 transition-all shadow" onClick={() => setAddEmpModalOpen(true)}>
                   <CalendarIcon />
                   Create Shift
                 </button>
-                <button className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-full py-2 px-6 transition-all shadow">
+                <button className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-full py-2 px-6 transition-all shadow" onClick={() => setAddEmpModalOpen(true)}>
                   <UsersIcon />
                   Add Employee
                 </button>
@@ -338,6 +346,10 @@ export default function BusinessDashboard() {
         <div className="fixed top-4 right-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm shadow-lg z-50">
           {error}
         </div>
+      )}
+
+      {businessId && (
+        <AddEmployeeModal open={addEmpModalOpen} onClose={() => setAddEmpModalOpen(false)} businessId={businessId} />
       )}
     </div>
   );
