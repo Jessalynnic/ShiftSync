@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getBusinessRoles } from './roleUtils';
+import { addEmployee } from './employeeUtils';
 
 export default function AddEmployeeModal({ open, onClose, businessId }) {
   const [firstName, setFirstName] = useState('');
@@ -12,6 +13,9 @@ export default function AddEmployeeModal({ open, onClose, businessId }) {
   const [employmentType, setEmploymentType] = useState('');
   const [loadingRoles, setLoadingRoles] = useState(false);
   const [rolesError, setRolesError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (open && businessId) {
@@ -44,10 +48,42 @@ export default function AddEmployeeModal({ open, onClose, businessId }) {
     setDob(formatted);
   };
 
-  const handleSubmit = (e) => {
+  const resetForm = () => {
+    setFirstName('');
+    setLastName('');
+    setDob('');
+    setEmail('');
+    setSsn('');
+    setRole('');
+    setEmploymentType('');
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Add employee logic
-    onClose();
+    setLoading(true);
+    setError('');
+    setSuccess(false);
+    const result = await addEmployee({
+      firstName,
+      lastName,
+      dob,
+      email,
+      ssn,
+      role,
+      employmentType,
+      businessId,
+    });
+    setLoading(false);
+    if (result.success) {
+      setSuccess(true);
+      resetForm();
+      setTimeout(() => {
+        setSuccess(false);
+        onClose();
+      }, 2000);
+    } else {
+      setError(result.error || 'Failed to add employee.');
+    }
   };
 
   if (!open) return null;
@@ -64,6 +100,16 @@ export default function AddEmployeeModal({ open, onClose, businessId }) {
         </button>
         <h2 className="text-2xl font-bold text-blue-800 mb-2">Add Employee</h2>
         <div className="h-1 w-16 bg-blue-200 rounded mb-6" />
+        {success && (
+          <div className="mb-4 p-3 rounded bg-green-50 text-green-700 border border-green-200 text-center">
+            ✅ Employee added successfully! Onboarding email sent to {email}.
+          </div>
+        )}
+        {error && (
+          <div className="mb-4 p-3 rounded bg-red-50 text-red-700 border border-red-200 text-center">
+            {error}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -154,13 +200,16 @@ export default function AddEmployeeModal({ open, onClose, businessId }) {
               type="button"
               className="bg-gray-100 hover:bg-gray-200 text-blue-700 font-semibold px-5 py-2 rounded-lg shadow-sm"
               onClick={onClose}
+              disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg shadow"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg shadow flex items-center gap-2"
+              disabled={loading}
             >
+              {loading && <span className="loader border-2 border-t-2 border-blue-200 border-t-blue-600 rounded-full w-4 h-4 animate-spin"></span>}
               Add Employee
             </button>
           </div>

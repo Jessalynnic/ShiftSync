@@ -1,0 +1,10 @@
+{
+  "imports": {
+    "resend": "https://esm.sh/resend@2.0.0"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"],
+    "strict": true
+  }
+}
