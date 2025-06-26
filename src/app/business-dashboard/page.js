@@ -44,6 +44,115 @@ function OverviewCard({ title, value, icon, loading = false }) {
   );
 }
 
+function ActivityIcon({ type }) {
+  if (type === 'add') return (
+    <span className="inline-flex w-6 h-6 bg-green-100 text-green-600 rounded-full items-center justify-center">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+      </svg>
+    </span>
+  );
+  if (type === 'edit') return (
+    <span className="inline-flex w-6 h-6 bg-blue-100 text-blue-600 rounded-full items-center justify-center">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+      </svg>
+    </span>
+  );
+  if (type === 'delete') return (
+    <span className="inline-flex w-6 h-6 bg-red-100 text-red-600 rounded-full items-center justify-center">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+      </svg>
+    </span>
+  );
+  if (type === 'email') return (
+    <span className="inline-flex w-6 h-6 bg-yellow-100 text-yellow-600 rounded-full items-center justify-center">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+      </svg>
+    </span>
+  );
+  // Fallback: clock icon for unknown types
+  return (
+    <span className="inline-flex w-6 h-6 bg-gray-100 text-gray-400 rounded-full items-center justify-center">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
+      </svg>
+    </span>
+  );
+}
+
+function RecentActivitiesSection({ businessId }) {
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!businessId) return;
+    setLoading(true);
+    setError('');
+    async function fetchActivities() {
+      try {
+        const res = await fetch(`/api/activity-log?businessId=${businessId}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to fetch activities');
+        setActivities(data.activities || []);
+      } catch (err) {
+        console.error('Error fetching activities:', err);
+        setError(err.message || 'Failed to load activities.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchActivities();
+  }, [businessId]);
+
+  return (
+    <section className="mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-gray-900">Recent Activities</h2>
+        <a href="/activity-log" className="text-blue-600 text-sm hover:underline">View All</a>
+      </div>
+      {loading ? (
+        <div className="text-gray-500 text-sm py-8 text-center">Loading activities...</div>
+      ) : error ? (
+        <div className="text-red-500 text-sm py-8 text-center">{error}</div>
+      ) : activities.length === 0 ? (
+        <div className="text-gray-500 text-sm py-8 text-center">No recent activities.</div>
+      ) : (
+        <div className="max-h-80 overflow-y-auto">
+          <ul className="space-y-4">
+            {activities.slice(0, 4).map(activity => (
+              <li key={activity.id} className="flex items-start gap-3">
+                <ActivityIcon type={activity.type} />
+                <div>
+                  <div className="text-sm text-gray-900">{activity.description}</div>
+                  <div className="text-xs text-gray-500">{new Date(activity.created_at).toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {activities.length > 4 && (
+            <div className="text-center mt-4 pt-4 border-t border-gray-100">
+              <span className="text-xs text-gray-500">
+                Showing 4 of {activities.length} activities
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function BusinessDashboard() {
   const router = useRouter();
   const pathname = usePathname();
@@ -138,6 +247,9 @@ export default function BusinessDashboard() {
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Left Column */}
             <section className="flex-1 flex flex-col gap-8">
+              {/* Recent Activities Section */}
+              <RecentActivitiesSection businessId={businessId} />
+
               {/* Schedule Overview */}
               <div className="bg-white rounded-2xl shadow-lg p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -145,14 +257,6 @@ export default function BusinessDashboard() {
                   <button className="text-blue-600 hover:underline">View Calendar</button>
                 </div>
                 <div className="text-blue-700 text-center py-8">(Calendar or upcoming shifts will appear here.)</div>
-              </div>
-              {/* Recent Activity */}
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xl font-bold text-blue-800">Recent Activity</span>
-                  <button className="text-blue-600 hover:underline">View All</button>
-                </div>
-                <div className="text-blue-700 text-center py-8">(Recent actions, shift swaps, new employees, etc. will appear here.)</div>
               </div>
             </section>
             {/* Right Column */}
