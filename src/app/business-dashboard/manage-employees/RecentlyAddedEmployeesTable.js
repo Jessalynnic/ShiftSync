@@ -55,9 +55,37 @@ export default function RecentlyAddedEmployeesTable() {
     setSendingOnboarding(prev => ({ ...prev, [employee.emp_id]: true }));
     
     try {
-      // Generate temp password using the same logic as add-employee API
-      const dobDigits = employee.dob?.replace(/\D/g, '') || '';
-      const tempPassword = `${dobDigits.slice(2, 4)}${dobDigits.slice(0, 2)}${dobDigits.slice(4, 6)}${employee.last4ssn}`;
+      // Generate temp password using the same logic as add-employee API and login function
+      // Parse date more explicitly to avoid timezone issues
+      const [year, month, day] = employee.dob.split('-').map(Number);
+      const tempPassword = `${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}${String(year).slice(-2)}${employee.last4ssn}`;
+      
+      // Debug logging
+      console.log('Password generation debug:', {
+        employee: employee.emp_id,
+        dob: employee.dob,
+        dobDate: employee.dob,
+        month: month,
+        day: day,
+        year: year,
+        last4ssn: employee.last4ssn,
+        generatedPassword: tempPassword
+      });
+      
+      // First, update the user metadata with the correct password
+      const updateResponse = await fetch('/api/update-employee-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emp_id: employee.emp_id })
+      });
+      
+      const updateResult = await updateResponse.json();
+      if (!updateResult.success) {
+        console.error('Error updating password:', updateResult.error);
+        // Continue anyway, the email will still be sent with the correct password
+      } else {
+        console.log('Password updated successfully:', updateResult.correctPassword);
+      }
       
       const response = await fetch('/api/send-onboarding-email', {
         method: 'POST',
@@ -200,13 +228,12 @@ export default function RecentlyAddedEmployeesTable() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{employee.email_address}</div>
-                    <div className="text-sm text-gray-500">SSN: ••••{employee.last4ssn}</div>
+                    <div className="text-sm text-gray-500">DOB: {formatDOB(employee.dob)}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{employee.roles?.role_name || 'N/A'}</div>
-                    <div className="text-sm text-gray-500">
-                      {employee.full_time ? 'Full-Time' : 'Part-Time'}
-                    </div>
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                      {employee.roles?.role_name || 'Unknown'}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
