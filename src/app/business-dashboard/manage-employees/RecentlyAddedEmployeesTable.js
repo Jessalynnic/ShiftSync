@@ -60,18 +60,6 @@ export default function RecentlyAddedEmployeesTable() {
       const [year, month, day] = employee.dob.split('-').map(Number);
       const tempPassword = `${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}${String(year).slice(-2)}${employee.last4ssn}`;
       
-      // Debug logging
-      console.log('Password generation debug:', {
-        employee: employee.emp_id,
-        dob: employee.dob,
-        dobDate: employee.dob,
-        month: month,
-        day: day,
-        year: year,
-        last4ssn: employee.last4ssn,
-        generatedPassword: tempPassword
-      });
-      
       // First, update the user metadata with the correct password
       const updateResponse = await fetch('/api/update-employee-password', {
         method: 'POST',
@@ -82,9 +70,6 @@ export default function RecentlyAddedEmployeesTable() {
       const updateResult = await updateResponse.json();
       if (!updateResult.success) {
         console.error('Error updating password:', updateResult.error);
-        // Continue anyway, the email will still be sent with the correct password
-      } else {
-        console.log('Password updated successfully:', updateResult.correctPassword);
       }
       
       const response = await fetch('/api/send-onboarding-email', {

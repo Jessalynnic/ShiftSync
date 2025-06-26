@@ -161,7 +161,6 @@ export default function ManageEmployeesPage() {
             metadata: { field: 'employment_type', new_value: editingEmployee.full_time ? 'Full-Time' : 'Part-Time' }
           });
       } catch (err) {
-        // Log but don't block UI
         console.error('Failed to log activity:', err);
       }
 

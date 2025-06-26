@@ -1,16 +1,13 @@
 "use client";
 import { useState } from 'react';
-import { loginBusiness } from './loginBusiness';
 import { loginEmployee } from './loginEmployee';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../supabaseClient';
 
 export default function LoginPage() {
-  const [isBusinessLogin, setIsBusinessLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [businessEmail, setBusinessEmail] = useState('');
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [success, setSuccess] = useState(false);
@@ -20,12 +17,6 @@ export default function LoginPage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const router = useRouter();
 
-  const switchLogin = (type) => {
-    setIsBusinessLogin(type === 'Business');
-    setError('');
-    setPromptPasswordChange(false);
-  };
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -33,41 +24,25 @@ export default function LoginPage() {
     setSuccess(false);
     setPromptPasswordChange(false);
     
-    if (isBusinessLogin) {
-      const { success, message } = await loginBusiness(businessEmail, password);
-      if (!success) {
-        setError(message);
-        setLoading(false);
-        return;
-      }
-      setSuccess(true);
+    const { success, message, promptPasswordChange: shouldPromptChange } = await loginEmployee(employeeId, password);
+    
+    if (!success) {
+      setError(message);
       setLoading(false);
-      setTimeout(() => {
-        router.push('/business-dashboard');
-      }, 1000);
       return;
-    } else {
-      // Employee login
-      const { success, message, promptPasswordChange: shouldPromptChange } = await loginEmployee(employeeId, password);
-      
-      if (!success) {
-        setError(message);
-        setLoading(false);
-        return;
-      }
-      
-      if (shouldPromptChange) {
-        setPromptPasswordChange(true);
-        setLoading(false);
-        return;
-      }
-      
-      setSuccess(true);
-      setLoading(false);
-      setTimeout(() => {
-        router.push('/employee-dashboard');
-      }, 1000);
     }
+    
+    if (shouldPromptChange) {
+      setPromptPasswordChange(true);
+      setLoading(false);
+      return;
+    }
+    
+    setSuccess(true);
+    setLoading(false);
+    setTimeout(() => {
+      router.push('/employee-dashboard');
+    }, 1000);
   };
 
   const handleGoogleLogin = () => {
@@ -143,40 +118,15 @@ export default function LoginPage() {
           <div className="flex-1 flex flex-col justify-center">
             <h1 className="text-3xl font-bold text-blue-800 mb-2">Sign in to your account</h1>
             <p className="text-blue-500 mb-8">Welcome back! Please enter your details below.</p>
-            {/* Login Type Switcher */}
-            <div className="flex bg-blue-100 rounded-lg p-1 mb-6 w-full max-w-xs">
-              <button
-                type="button"
-                onClick={() => switchLogin('Employee')}
-                className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
-                  !isBusinessLogin 
-                    ? 'bg-white text-blue-600 shadow-sm' 
-                    : 'text-blue-600/60 hover:text-blue-800'
-                }`}
-              >
-                Employee
-              </button>
-              <button
-                type="button"
-                onClick={() => switchLogin('Business')}
-                className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
-                  isBusinessLogin 
-                    ? 'bg-white text-blue-600 shadow-sm' 
-                    : 'text-blue-600/60 hover:text-blue-800'
-                }`}
-              >
-                Business
-              </button>
-            </div>
             {/* Login Form or Password Change Form */}
             {!promptPasswordChange ? (
               <form onSubmit={handleLogin} className="space-y-5 w-full max-w-xs">
                 <div>
                   <input
-                    type={isBusinessLogin ? 'email' : 'text'}
-                    placeholder={isBusinessLogin ? 'Business Email' : 'Employee ID'}
-                    value={isBusinessLogin ? businessEmail : employeeId}
-                    onChange={(e) => isBusinessLogin ? setBusinessEmail(e.target.value) : setEmployeeId(e.target.value)}
+                    type="text"
+                    placeholder="Employee ID"
+                    value={employeeId}
+                    onChange={(e) => setEmployeeId(e.target.value)}
                     className="w-full px-4 py-3 border border-blue-100 rounded-full focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all bg-white text-blue-900 placeholder-blue-300"
                     required
                   />
