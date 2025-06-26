@@ -21,8 +21,9 @@ export async function POST(request) {
     const emp_id = await generateUniqueEmpId();
 
     // Generate temp password (MMDD + YY + last4ssn)
-    const dobDigits = dob.replace(/\D/g, '');
-    const tempPassword = `${dobDigits.slice(2, 4)}${dobDigits.slice(0, 2)}${dobDigits.slice(4, 6)}${ssn}`;
+    // Parse date more explicitly to avoid timezone issues
+    const [year, month, day] = dob.split('-').map(Number);
+    const tempPassword = `${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}${String(year).slice(-2)}${ssn}`;
 
     // Fetch business name
     const { data: businessData } = await supabase
@@ -32,9 +33,12 @@ export async function POST(request) {
       .single();
     const business_name = businessData?.business_name || 'ShiftSync';
 
-    // Create user in Supabase Auth (admin) with all metadata
-    const createUserResponse = await supabase.auth.admin.inviteUserByEmail(email, {
-      data: {
+    // Create user in Supabase Auth with all metadata and set password
+    const { data: user, error: signUpError } = await supabase.auth.admin.createUser({
+      email: email,
+      password: tempPassword,
+      email_confirm: true, // Auto-confirm the email
+      user_metadata: {
         first_name: firstName,
         last_name: lastName,
         dob,
@@ -45,19 +49,17 @@ export async function POST(request) {
         employmentType,
         business_name,
         temp_password: tempPassword,
+        password_changed: false,
+        password_changed_at: null
       }
     });
-    const { data: user, error: signUpError } = createUserResponse;
     
     if (signUpError) {
-      // Check if it's an email invitation error
-      if (signUpError.message.includes('invitation') || signUpError.message.includes('email')) {
-        console.error('Email invitation error:', signUpError);
-        // Still create the employee record, but note the email issue
-        console.log('Creating employee record despite email invitation error...');
-      } else {
-        throw new Error(signUpError.message);
-      }
+      console.error('Error creating user:', signUpError);
+      return NextResponse.json({ 
+        success: false, 
+        error: signUpError.message 
+      }, { status: 500 });
     }
 
     // Add employee to the employee table
@@ -65,7 +67,7 @@ export async function POST(request) {
       .from('employee')
       .insert({
         emp_id,
-        user_id: user?.user?.id || null, // Handle case where user creation failed
+        user_id: user?.user?.id,
         business_id: businessId,
         role_id: role,
         first_name: firstName,
@@ -75,11 +77,16 @@ export async function POST(request) {
         dob,
         is_active: true,
         full_time: employmentType === 'Full-Time',
+        password_changed: false,
+        password_changed_at: null
       });
     
     if (employeeError) {
       console.error('Error adding employee to table:', employeeError);
-      throw new Error(`Failed to add employee to database: ${employeeError.message}`);
+      return NextResponse.json({ 
+        success: false, 
+        error: `Failed to add employee to database: ${employeeError.message}` 
+      }, { status: 500 });
     }
 
     // Log activity: employee added
@@ -95,7 +102,8 @@ export async function POST(request) {
           metadata: { 
             action: 'employee_created',
             employment_type: employmentType,
-            role_id: role
+            role_id: role,
+            default_password_set: !!user?.user?.id
           }
         })
         .select();
@@ -108,19 +116,17 @@ export async function POST(request) {
       console.error('Failed to log activity:', err);
     }
 
-    // If there was an email invitation error, return a warning but still success
-    if (signUpError) {
-      return NextResponse.json({ 
-        success: true, 
-        warning: 'Employee added successfully, but email invitation failed. You may need to resend the invitation.',
-        emp_id,
-        needsEmailResend: true
-      });
-    }
-
-    return NextResponse.json({ success: true, emp_id });
+    return NextResponse.json({ 
+      success: true, 
+      emp_id,
+      defaultPassword: tempPassword,
+      userCreated: !!user?.user?.id
+    });
   } catch (err) {
     console.error('API error:', err);
-    return NextResponse.json({ success: false, error: err.message || 'Failed to add employee.' }, { status: 500 });
+    return NextResponse.json({ 
+      success: false, 
+      error: err.message || 'Failed to add employee.' 
+    }, { status: 500 });
   }
 } 
