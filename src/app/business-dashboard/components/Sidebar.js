@@ -1,7 +1,54 @@
 "use client";
+import { useState, useEffect } from 'react';
+import { supabase } from '../../../supabaseClient';
 import { DashboardIcon, ScheduleIcon, EmployeesIcon, RequestsIcon, ReportsIcon, SettingsIcon } from "./SidebarIcons";
 
 export default function Sidebar({ pathname, router, sidebarOpen, setSidebarOpen }) {
+  const [businessOwner, setBusinessOwner] = useState({
+    first_name: '',
+    last_name: '',
+    email: ''
+  });
+
+  useEffect(() => {
+    const getBusinessOwner = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: employee } = await supabase
+          .from('employee')
+          .select('first_name, last_name, email_address')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (employee) {
+          setBusinessOwner({
+            first_name: employee.first_name,
+            last_name: employee.last_name,
+            email: employee.email_address
+          });
+        }
+      }
+    };
+
+    getBusinessOwner();
+
+    // Listen for profile updates
+    const refreshProfile = () => {
+      getBusinessOwner();
+    };
+
+    // Add global function to refresh profile
+    if (typeof window !== 'undefined') {
+      window.refreshSidebarProfile = refreshProfile;
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete window.refreshSidebarProfile;
+      }
+    };
+  }, []);
+
   function SidebarItem({ icon, label, active = false, onClick }) {
     return (
       <button
@@ -17,6 +64,23 @@ export default function Sidebar({ pathname, router, sidebarOpen, setSidebarOpen 
       </button>
     );
   }
+
+  // Generate initials from first and last name
+  const getInitials = (firstName, lastName) => {
+    if (!firstName || !lastName) return 'BO'; // Business Owner fallback
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+
+  // Get display name
+  const getDisplayName = (firstName, lastName) => {
+    if (firstName === 'Business' && lastName === 'Owner') {
+      return 'Business Owner';
+    }
+    if (!firstName || !lastName) {
+      return 'Business Owner';
+    }
+    return `${firstName} ${lastName}`;
+  };
 
   return (
     <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 lg:overflow-y-auto`} style={{ height: '100vh' }}>
@@ -46,10 +110,14 @@ export default function Sidebar({ pathname, router, sidebarOpen, setSidebarOpen 
         <div className="p-4">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
             <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-semibold">JD</span>
+              <span className="text-white text-sm font-semibold">
+                {getInitials(businessOwner.first_name, businessOwner.last_name)}
+              </span>
             </div>
             <div className="flex-1">
-              <div className="text-sm font-medium text-gray-900">John Doe</div>
+              <div className="text-sm font-medium text-gray-900">
+                {getDisplayName(businessOwner.first_name, businessOwner.last_name)}
+              </div>
               <div className="text-xs text-gray-500">Business Owner</div>
             </div>
           </div>

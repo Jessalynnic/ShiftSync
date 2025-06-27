@@ -27,6 +27,7 @@ export default function ManageEmployeesPage() {
   const [businessId, setBusinessId] = useState(null);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [editTab, setEditTab] = useState('basic');
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
 
   useEffect(() => {
     async function fetchBusinessId() {
@@ -38,6 +39,37 @@ export default function ManageEmployeesPage() {
       }
     }
     fetchBusinessId();
+  }, []);
+
+  // Check if business owner profile is incomplete
+  useEffect(() => {
+    const checkProfileStatus = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: employee } = await supabase
+          .from('employee')
+          .select('first_name, last_name, dob, last4ssn')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (employee && (
+          employee.first_name === 'Business' || 
+          employee.last_name === 'Owner' || 
+          employee.dob === '1900-01-01' || 
+          employee.last4ssn === 'XXXX'
+        )) {
+          // Check if user has dismissed this message
+          const dismissed = localStorage.getItem('manageEmployeesWelcomeDismissed');
+          if (!dismissed) {
+            setProfileIncomplete(true);
+          }
+        } else {
+          setProfileIncomplete(false);
+        }
+      }
+    };
+
+    checkProfileStatus();
   }, []);
 
   useEffect(() => {
@@ -149,7 +181,7 @@ export default function ManageEmployeesPage() {
 
       // Log activity: employment type change
       try {
-        const user = (await supabase.auth.getUser()).data.user;
+        const { data: { user } } = await supabase.auth.getUser();
         await supabase
           .from('activity_log')
           .insert({
@@ -164,9 +196,36 @@ export default function ManageEmployeesPage() {
         console.error('Failed to log activity:', err);
       }
 
+      // Store employee data before clearing it
+      const updatedEmployee = { ...editingEmployee };
+      const { data: { user } } = await supabase.auth.getUser();
+
       setIsEditing(false);
       setEditingEmployee(null);
       setAvailability([]);
+      
+      // Check if this was the business owner updating their profile
+      if (user && updatedEmployee && updatedEmployee.user_id === user.id) {
+        // This was the business owner updating their profile
+        const isProfileComplete = (
+          updatedEmployee.first_name !== 'Business' && 
+          updatedEmployee.last_name !== 'Owner' && 
+          updatedEmployee.dob !== '1900-01-01' && 
+          updatedEmployee.last4ssn !== 'XXXX'
+        );
+        
+        if (isProfileComplete) {
+          // Profile is now complete, update local state and trigger dashboard refresh
+          setProfileIncomplete(false);
+          if (typeof window !== 'undefined' && window.refreshProfileStatus) {
+            window.refreshProfileStatus();
+          }
+          // Refresh sidebar profile
+          if (typeof window !== 'undefined' && window.refreshSidebarProfile) {
+            window.refreshSidebarProfile();
+          }
+        }
+      }
       
       // Show success message
       alert('Employee updated successfully!');
@@ -244,6 +303,11 @@ export default function ManageEmployeesPage() {
     }, 1500);
   };
 
+  const dismissWelcomeMessage = () => {
+    setProfileIncomplete(false);
+    localStorage.setItem('manageEmployeesWelcomeDismissed', 'true');
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Sidebar */}
@@ -256,6 +320,36 @@ export default function ManageEmployeesPage() {
 
         {/* Page Content */}
         <div className="flex-1 p-6">
+          {/* Profile Completion Message for Business Owner */}
+          {profileIncomplete && (
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="text-2xl">👋</div>
+                      <h3 className="font-semibold text-purple-800">Welcome to Employee Management!</h3>
+                    </div>
+                    <p className="text-purple-700 text-sm mb-3">
+                      You can see yourself listed as an employee below. Click the "Edit" button next to your name to update your personal information (name, date of birth, SSN).
+                    </p>
+                    <div className="text-xs text-purple-600 bg-white bg-opacity-50 rounded px-2 py-1 inline-block">
+                      💡 Tip: Complete your profile first, then add your team members!
+                    </div>
+                  </div>
+                  <button 
+                    onClick={dismissWelcomeMessage}
+                    className="text-purple-600 hover:text-purple-800 ml-4"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Page Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Manage Employees</h1>
@@ -535,17 +629,23 @@ export default function ManageEmployeesPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Last 4 SSN <span className="text-red-500">*</span>
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Last 4 digits of SSN</label>
                             <input
                               type="text"
                               value={editingEmployee.last4ssn}
-                              onChange={(e) => setEditingEmployee(prev => ({ ...prev, last4ssn: e.target.value }))}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              placeholder="1234"
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value !== 'XXXX') {
+                                  setEditingEmployee({...editingEmployee, last4ssn: value});
+                                }
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               maxLength="4"
+                              pattern="[0-9]{4}"
+                              placeholder="1234"
+                              required
                             />
+                            <p className="text-xs text-gray-500 mt-1">Only the last 4 digits are stored for identification purposes</p>
                           </div>
                         </div>
 

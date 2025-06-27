@@ -41,7 +41,7 @@ export default function SignupPage() {
     setLoading(false);
     setTimeout(() => {
       router.push('/login');
-    }, 2000);
+    }, 5000);
   };
 
   return (
@@ -212,7 +212,12 @@ export default function SignupPage() {
               )}
               {success && (
                 <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm mt-4 text-center">
-                  Registration successful! Please check your email to confirm your account. Redirecting to login...
+                  <div className="mb-3">
+                    <strong>Registration successful!</strong> Please check your email and click the confirmation link to verify your account.
+                  </div>
+                  <div className="text-xs text-green-600">
+                    After confirming your email, you can log in to access your account.
+                  </div>
                 </div>
               )}
             </form>

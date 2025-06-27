@@ -164,6 +164,63 @@ export default function BusinessDashboard() {
   const [businessId, setBusinessId] = useState(null);
   const [employeeCount, setEmployeeCount] = useState(0);
   const [loadingCount, setLoadingCount] = useState(true);
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
+  const [showProfileCompletionBanner, setShowProfileCompletionBanner] = useState(false);
+  const [showProfileSuccessBanner, setShowProfileSuccessBanner] = useState(false);
+
+  // Check if user needs to complete profile
+  useEffect(() => {
+    const checkProfileCompletion = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Check if employee profile is complete (has real name, DOB, SSN)
+        const { data: employee } = await supabase
+          .from('employee')
+          .select('first_name, last_name, dob, last4ssn')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (employee && (
+          employee.first_name === 'Business' || 
+          employee.last_name === 'Owner' || 
+          employee.dob === '1900-01-01' || 
+          employee.last4ssn === 'XXXX'
+        )) {
+          // Profile is incomplete, show completion banner (unless dismissed)
+          const dismissed = localStorage.getItem('profileCompletionDismissed');
+          if (!dismissed) {
+            setShowProfileCompletionBanner(true);
+          }
+          setShowProfileSuccessBanner(false);
+        } else if (employee && employeeCount === 1) {
+          // Profile is complete but only has 1 employee (themselves), show welcome banner (unless dismissed)
+          const dismissed = localStorage.getItem('welcomeBannerDismissed');
+          if (!dismissed) {
+            setShowWelcomeBanner(true);
+          }
+          setShowProfileCompletionBanner(false);
+          setShowProfileSuccessBanner(false);
+        } else {
+          // Profile is complete and has multiple employees, hide all banners
+          setShowWelcomeBanner(false);
+          setShowProfileCompletionBanner(false);
+          setShowProfileSuccessBanner(false);
+        }
+      }
+    };
+
+    checkProfileCompletion();
+  }, [employeeCount]);
+
+  // Auto-hide success banner after 5 seconds
+  useEffect(() => {
+    if (showProfileSuccessBanner) {
+      const timer = setTimeout(() => {
+        setShowProfileSuccessBanner(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showProfileSuccessBanner]);
 
   useEffect(() => {
     getBusinessIdForCurrentUser().then(setBusinessId);
@@ -208,6 +265,40 @@ export default function BusinessDashboard() {
     }
   };
 
+  // Function to refresh profile status (can be called from other components)
+  const refreshProfileStatus = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: employee } = await supabase
+        .from('employee')
+        .select('first_name, last_name, dob, last4ssn')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (employee) {
+        const isIncomplete = (
+          employee.first_name === 'Business' || 
+          employee.last_name === 'Owner' || 
+          employee.dob === '1900-01-01' || 
+          employee.last4ssn === 'XXXX'
+        );
+        
+        if (!isIncomplete) {
+          // Profile is now complete, show success banner
+          setShowProfileCompletionBanner(false);
+          setShowProfileSuccessBanner(true);
+        }
+      }
+    }
+  };
+
+  // Expose the function globally so other components can call it
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.refreshProfileStatus = refreshProfileStatus;
+    }
+  }, []);
+
   const handleLogout = async () => {
     setLoading(true);
     setError('');
@@ -223,6 +314,21 @@ export default function BusinessDashboard() {
     }, 1500);
   };
 
+  // Dismiss functions
+  const dismissProfileCompletion = () => {
+    setShowProfileCompletionBanner(false);
+    localStorage.setItem('profileCompletionDismissed', 'true');
+  };
+
+  const dismissWelcomeBanner = () => {
+    setShowWelcomeBanner(false);
+    localStorage.setItem('welcomeBannerDismissed', 'true');
+  };
+
+  const dismissProfileSuccess = () => {
+    setShowProfileSuccessBanner(false);
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Sidebar */}
@@ -232,6 +338,153 @@ export default function BusinessDashboard() {
       <div className="lg:ml-64 flex flex-col min-h-screen">
         {/* Top Nav Bar */}
         <DashboardHeader title="Dashboard" sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} loading={loading} handleLogout={handleLogout} />
+
+        {/* Profile Completion Banner for New Users */}
+        {showProfileCompletionBanner && (
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-l-4 border-purple-400 p-6 mx-6 mt-6 rounded-lg">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="text-2xl">🎯</div>
+                  <h3 className="text-lg font-semibold text-purple-800">
+                    Complete Your Profile!
+                  </h3>
+                </div>
+                <p className="text-purple-700 mb-4">
+                  Welcome to ShiftSync! To get started, please update your employee profile with your personal information.
+                </p>
+                <div className="bg-white p-4 rounded-lg border border-purple-200 mb-4">
+                  <h4 className="font-medium text-purple-800 mb-2">📝 What You Need to Update:</h4>
+                  <ul className="text-sm text-purple-700 space-y-1">
+                    <li>• Your full name (first and last)</li>
+                    <li>• Date of birth</li>
+                    <li>• Last 4 digits of your SSN</li>
+                  </ul>
+                </div>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => router.push('/business-dashboard/manage-employees')}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Update My Profile
+                  </button>
+                  <button 
+                    onClick={dismissProfileCompletion}
+                    className="text-purple-600 hover:text-purple-800 px-4 py-2 text-sm font-medium transition-colors"
+                  >
+                    I'll do this later
+                  </button>
+                </div>
+              </div>
+              <button 
+                onClick={dismissProfileCompletion}
+                className="text-purple-600 hover:text-purple-800 ml-4"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Profile Success Banner */}
+        {showProfileSuccessBanner && (
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-400 p-6 mx-6 mt-6 rounded-lg">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="text-2xl">🎉</div>
+                  <h3 className="text-lg font-semibold text-green-800">
+                    Profile Updated Successfully!
+                  </h3>
+                </div>
+                <p className="text-green-700 mb-4">
+                  Great job! Your profile is now complete. You're all set to start managing your team with ShiftSync.
+                </p>
+                <div className="bg-white p-4 rounded-lg border border-green-200 mb-4">
+                  <h4 className="font-medium text-green-800 mb-2">🚀 What's Next:</h4>
+                  <ul className="text-sm text-green-700 space-y-1">
+                    <li>• Add your first employee to start building your team</li>
+                    <li>• Set up employee roles and permissions</li>
+                    <li>• Start managing schedules and shifts</li>
+                    <li>• Enjoy the full power of ShiftSync!</li>
+                  </ul>
+                </div>
+              </div>
+              <button 
+                onClick={dismissProfileSuccess}
+                className="text-green-600 hover:text-green-800 ml-4"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Welcome Banner for New Users */}
+        {showWelcomeBanner && (
+          <div className="bg-gradient-to-r from-green-50 to-blue-50 border-l-4 border-green-400 p-6 mx-6 mt-6 rounded-lg">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-green-800 mb-2">
+                  🎉 Welcome to ShiftSync!
+                </h3>
+                <p className="text-green-700 mb-4">
+                  Your business account is now fully set up! Here's what you can do next:
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="bg-white p-4 rounded-lg border border-green-200">
+                    <h4 className="font-medium text-green-800 mb-2">👥 Add Your First Employee</h4>
+                    <p className="text-sm text-green-600 mb-3">
+                      Start building your team by adding employees to your business.
+                    </p>
+                    <button 
+                      onClick={() => setAddEmpModalOpen(true)}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Add Employee
+                    </button>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-green-200">
+                    <h4 className="font-medium text-green-800 mb-2">🔐 Set Up Roles</h4>
+                    <p className="text-sm text-green-600 mb-3">
+                      Create different roles and permissions for your team members.
+                    </p>
+                    <button 
+                      onClick={() => router.push('/business-dashboard/manage-employees')}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Manage Roles
+                    </button>
+                  </div>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-800 mb-2">💡 Pro Tips</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• You can log in with either your business email or Employee ID</li>
+                    <li>• Send new employees onboarding emails with their employee ID and default passwords</li>
+                    <li>• Employees can change their passwords after first login</li>
+                    <li>• Use the dashboard to monitor employee activity and manage your team</li>
+                  </ul>
+                </div>
+              </div>
+              <button 
+                onClick={dismissWelcomeBanner}
+                className="text-green-600 hover:text-green-800 ml-4"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Page Content */}
         <div className="flex-1 p-6">

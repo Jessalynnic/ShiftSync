@@ -1,9 +1,12 @@
 import { supabase } from '../../supabaseClient';
 
-export async function loginEmployee(employeeId, password) {
+export async function loginEmployee(employeeIdOrEmail, password) {
   try {
-    // First, find the employee in the database to get their email
-    const { data: employee, error: employeeError } = await supabase
+    // Check if input looks like an email
+    const isEmail = employeeIdOrEmail.includes('@');
+    
+    // Build the query based on whether it's an email or employee ID
+    let query = supabase
       .from('employee')
       .select(`
         emp_id,
@@ -18,9 +21,15 @@ export async function loginEmployee(employeeId, password) {
         is_active,
         full_time,
         roles(role_name, is_manager)
-      `)
-      .eq('emp_id', employeeId)
-      .single();
+      `);
+
+    if (isEmail) {
+      query = query.eq('email_address', employeeIdOrEmail);
+    } else {
+      query = query.eq('emp_id', employeeIdOrEmail);
+    }
+
+    const { data: employee, error: employeeError } = await query.single();
 
     if (employeeError || !employee) {
       return {
@@ -44,6 +53,9 @@ export async function loginEmployee(employeeId, password) {
       };
     }
 
+    // Check if this is a business owner
+    const isBusinessOwner = employee.roles?.role_name === 'Business Owner';
+    
     // Try to sign in with the employee's email and provided password
     const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({
       email: employee.email_address,
@@ -81,7 +93,8 @@ export async function loginEmployee(employeeId, password) {
         message: 'Login successful',
         employee: employee,
         user: user,
-        promptPasswordChange: true
+        promptPasswordChange: true,
+        isBusinessOwner: isBusinessOwner
       };
     }
 
@@ -99,7 +112,8 @@ export async function loginEmployee(employeeId, password) {
       message: 'Login successful',
       employee: employee,
       user: user,
-      promptPasswordChange: false
+      promptPasswordChange: false,
+      isBusinessOwner: isBusinessOwner
     };
 
   } catch (error) {
