@@ -40,7 +40,7 @@ export async function businessSignup({ email, password, businessName }) {
       first_name: 'Business', // Placeholder - they can update this later
       last_name: 'Owner',
       email_address: email,
-      last4ssn: '0000', // Placeholder - they can update this later
+      last4ssn: 'XXXX', // Placeholder - they can update this later
       dob: '1900-01-01', // Placeholder - they can update this later
       is_active: true,
       full_time: true,

@@ -184,7 +184,7 @@ export default function BusinessDashboard() {
           employee.first_name === 'Business' || 
           employee.last_name === 'Owner' || 
           employee.dob === '1900-01-01' || 
-          employee.last4ssn === '0000'
+          employee.last4ssn === 'XXXX'
         )) {
           // Profile is incomplete, show completion banner (unless dismissed)
           const dismissed = localStorage.getItem('profileCompletionDismissed');
@@ -280,7 +280,7 @@ export default function BusinessDashboard() {
           employee.first_name === 'Business' || 
           employee.last_name === 'Owner' || 
           employee.dob === '1900-01-01' || 
-          employee.last4ssn === '0000'
+          employee.last4ssn === 'XXXX'
         );
         
         if (!isIncomplete) {

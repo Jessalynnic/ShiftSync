@@ -56,7 +56,7 @@ export default function ManageEmployeesPage() {
           employee.first_name === 'Business' || 
           employee.last_name === 'Owner' || 
           employee.dob === '1900-01-01' || 
-          employee.last4ssn === '0000'
+          employee.last4ssn === 'XXXX'
         )) {
           // Check if user has dismissed this message
           const dismissed = localStorage.getItem('manageEmployeesWelcomeDismissed');
@@ -211,7 +211,7 @@ export default function ManageEmployeesPage() {
           updatedEmployee.first_name !== 'Business' && 
           updatedEmployee.last_name !== 'Owner' && 
           updatedEmployee.dob !== '1900-01-01' && 
-          updatedEmployee.last4ssn !== '0000'
+          updatedEmployee.last4ssn !== 'XXXX'
         );
         
         if (isProfileComplete) {
@@ -219,6 +219,10 @@ export default function ManageEmployeesPage() {
           setProfileIncomplete(false);
           if (typeof window !== 'undefined' && window.refreshProfileStatus) {
             window.refreshProfileStatus();
+          }
+          // Refresh sidebar profile
+          if (typeof window !== 'undefined' && window.refreshSidebarProfile) {
+            window.refreshSidebarProfile();
           }
         }
       }
@@ -625,17 +629,23 @@ export default function ManageEmployeesPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Last 4 SSN <span className="text-red-500">*</span>
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Last 4 digits of SSN</label>
                             <input
                               type="text"
                               value={editingEmployee.last4ssn}
-                              onChange={(e) => setEditingEmployee(prev => ({ ...prev, last4ssn: e.target.value }))}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              placeholder="1234"
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value !== 'XXXX') {
+                                  setEditingEmployee({...editingEmployee, last4ssn: value});
+                                }
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               maxLength="4"
+                              pattern="[0-9]{4}"
+                              placeholder="1234"
+                              required
                             />
+                            <p className="text-xs text-gray-500 mt-1">Only the last 4 digits are stored for identification purposes</p>
                           </div>
                         </div>
 
