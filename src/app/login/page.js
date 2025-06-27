@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+  const [isBusinessOwner, setIsBusinessOwner] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e) => {
@@ -24,7 +25,7 @@ export default function LoginPage() {
     setSuccess(false);
     setPromptPasswordChange(false);
     
-    const { success, message, promptPasswordChange: shouldPromptChange } = await loginEmployee(employeeId, password);
+    const { success, message, promptPasswordChange: shouldPromptChange, isBusinessOwner } = await loginEmployee(employeeId, password);
     
     if (!success) {
       setError(message);
@@ -33,6 +34,7 @@ export default function LoginPage() {
     }
     
     if (shouldPromptChange) {
+      setIsBusinessOwner(isBusinessOwner);
       setPromptPasswordChange(true);
       setLoading(false);
       return;
@@ -41,13 +43,17 @@ export default function LoginPage() {
     setSuccess(true);
     setLoading(false);
     setTimeout(() => {
-      router.push('/employee-dashboard');
+      // Redirect business owners to business dashboard, regular employees to employee dashboard
+      if (isBusinessOwner) {
+        router.push('/business-dashboard');
+      } else {
+        router.push('/employee-dashboard');
+      }
     }, 1000);
   };
 
   const handleGoogleLogin = () => {
     // TODO: Implement Google OAuth login
-    console.log('Google login clicked');
   };
 
   const handlePasswordChange = async (e) => {
@@ -90,7 +96,12 @@ export default function LoginPage() {
       setSuccess(true);
       setChangingPassword(false);
       setTimeout(() => {
-        router.push('/employee-dashboard');
+        // Redirect business owners to business dashboard, regular employees to employee dashboard
+        if (isBusinessOwner) {
+          router.push('/business-dashboard');
+        } else {
+          router.push('/employee-dashboard');
+        }
       }, 1000);
       
     } catch (err) {
@@ -124,7 +135,7 @@ export default function LoginPage() {
                 <div>
                   <input
                     type="text"
-                    placeholder="Employee ID"
+                    placeholder="Employee ID or Email"
                     value={employeeId}
                     onChange={(e) => setEmployeeId(e.target.value)}
                     className="w-full px-4 py-3 border border-blue-100 rounded-full focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all bg-white text-blue-900 placeholder-blue-300"
