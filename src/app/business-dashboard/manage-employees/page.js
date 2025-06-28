@@ -214,6 +214,36 @@ export default function ManageEmployeesPage() {
 
       if (updateError) throw updateError;
 
+      // --- AVAILABILITY UPSERT LOGIC ---
+      for (let i = 0; i < availability.length; i++) {
+        const avail = availability[i];
+        const upsertData = avail.start_time && avail.end_time
+          ? {
+              employee_id: editingEmployee.emp_id,
+              day_of_week: i, // 0=Sunday, 1=Monday, etc.
+              start_time: avail.start_time,
+              end_time: avail.end_time,
+              is_available: true,
+            }
+          : {
+              employee_id: editingEmployee.emp_id,
+              day_of_week: i,
+              is_available: false,
+              start_time: null,
+              end_time: null,
+            };
+        console.log('Upserting availability:', upsertData);
+        const { error: availError, data: availData } = await supabase
+          .from('employee_availability')
+          .upsert(upsertData, { onConflict: ['employee_id', 'day_of_week'] });
+        console.log('Upsert response:', { availData, availError });
+        if (availError) {
+          alert(`Failed to save availability for day ${i}: ${availError.message}`);
+          console.error('Availability upsert error:', availError);
+        }
+      }
+      // --- END AVAILABILITY UPSERT LOGIC ---
+
       // Update the employee in the list
       setAllEmployees(prev => 
         prev.map(emp => 
@@ -771,8 +801,6 @@ export default function ManageEmployeesPage() {
                                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
                                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time</th>
                                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
@@ -802,22 +830,6 @@ export default function ManageEmployeesPage() {
                                         <option key={time.value} value={time.value}>{time.displayTime}</option>
                                       ))}
                                     </select>
-                                  </td>
-                                  <td className="px-4 py-2">
-                                    <input
-                                      type="date"
-                                      value={avail.start_date}
-                                      onChange={e => handleAvailabilityChange(index, 'start_date', e.target.value)}
-                                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                    />
-                                  </td>
-                                  <td className="px-4 py-2">
-                                    <input
-                                      type="date"
-                                      value={avail.end_date}
-                                      onChange={e => handleAvailabilityChange(index, 'end_date', e.target.value)}
-                                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                    />
                                   </td>
                                 </tr>
                               ))}
