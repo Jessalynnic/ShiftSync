@@ -27,6 +27,11 @@ const getWeekDates = (date) => {
   return dates;
 };
 
+const isToday = (date) => {
+  const today = new Date();
+  return date.toDateString() === today.toDateString();
+};
+
 const formatTime = (time) => {
   if (!time) return '';
   const [hours, minutes] = time.split(':');
@@ -89,10 +94,17 @@ const EmployeeList = ({ employees, selectedRole, onRoleChange, onEmployeeDrop })
     const todayAvailability = employee.availability.find(avail => avail.day_of_week === today);
     
     if (todayAvailability) {
-      return `Available: ${formatTime(todayAvailability.start_time)} - ${formatTime(todayAvailability.end_time)}`;
+      return `Today: ${formatTime(todayAvailability.start_time)} - ${formatTime(todayAvailability.end_time)}`;
     }
     
-    return `Available ${employee.availability.length} days/week`;
+    // Show availability summary
+    const availableDays = employee.availability.length;
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const availableDayNames = employee.availability
+      .map(avail => dayNames[avail.day_of_week])
+      .join(', ');
+    
+    return `${availableDays} days: ${availableDayNames}`;
   };
 
   return (
@@ -165,8 +177,30 @@ const EmployeeList = ({ employees, selectedRole, onRoleChange, onEmployeeDrop })
                       </p>
                     </div>
                     {availabilityText && (
-                      <div className="text-xs text-green-600 text-right max-w-24">
-                        {availabilityText}
+                      <div className="group relative">
+                        <div className="text-xs text-green-600 text-right max-w-24 cursor-help">
+                          {availabilityText}
+                        </div>
+                        {/* Detailed Availability Tooltip */}
+                        <div className="absolute bottom-full right-0 mb-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                          <div className="text-xs font-medium text-gray-900 mb-2">Weekly Availability</div>
+                          <div className="space-y-1">
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dayName, index) => {
+                              const dayAvailability = employee.availability.find(avail => avail.day_of_week === index);
+                              return (
+                                <div key={dayName} className="flex justify-between text-xs">
+                                  <span className="text-gray-600 w-8">{dayName}:</span>
+                                  <span className={dayAvailability ? 'text-green-600' : 'text-gray-400'}>
+                                    {dayAvailability 
+                                      ? `${formatTime(dayAvailability.start_time)} - ${formatTime(dayAvailability.end_time)}`
+                                      : 'Not available'
+                                    }
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -232,14 +266,25 @@ const ScheduleGrid = ({ employees, weekDays, employeeAssignments, shiftAssignmen
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               {weekDays.map((day) => (
-                <th key={day} className="px-3 py-3 text-center text-sm font-medium text-gray-700 min-w-[140px]">
+                <th key={day} className={`px-3 py-3 text-center text-sm font-medium min-w-[140px] ${
+                  isToday(day) 
+                    ? 'bg-blue-50 border-l-2 border-r-2 border-blue-200 text-blue-900' 
+                    : 'text-gray-700'
+                }`}>
                   <div className="space-y-1">
-                    <div className="text-xs text-gray-500 font-normal">
+                    <div className={`text-xs font-normal ${
+                      isToday(day) ? 'text-blue-600' : 'text-gray-500'
+                    }`}>
                       {day.toLocaleDateString('en-US', { weekday: 'short' })}
                     </div>
-                    <div className="text-sm font-semibold text-gray-900">
+                    <div className={`text-sm font-semibold ${
+                      isToday(day) ? 'text-blue-900' : 'text-gray-900'
+                    }`}>
                       {day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </div>
+                    {isToday(day) && (
+                      <div className="text-xs text-blue-600 font-medium">TODAY</div>
+                    )}
                   </div>
                 </th>
               ))}
@@ -258,11 +303,17 @@ const ScheduleGrid = ({ employees, weekDays, employeeAssignments, shiftAssignmen
                     <td
                       key={day}
                       data-cell-id={cellId}
-                      className="px-1 py-1 min-h-[80px]"
+                      className={`px-1 py-1 min-h-[80px] ${
+                        isToday(day) ? 'bg-blue-50 border-l border-r border-blue-100' : ''
+                      }`}
                       onDragOver={handleDragOver}
                       onDrop={(e) => handleDrop(e, dayKey, rowIndex)}
                     >
-                      <div className="h-full min-h-[80px] border-2 border-dashed border-gray-200 rounded-lg p-2 transition-all hover:border-gray-300 hover:bg-gray-50">
+                      <div className={`h-full min-h-[80px] border-2 border-dashed rounded-lg p-2 transition-all hover:border-gray-300 hover:bg-gray-50 ${
+                        isToday(day) 
+                          ? 'border-blue-200 hover:border-blue-300 hover:bg-blue-50' 
+                          : 'border-gray-200'
+                      }`}>
                         {employeeAssignment && (
                           <div className="bg-blue-100 border border-blue-200 rounded p-1 mb-1 relative">
                             <button
@@ -807,6 +858,14 @@ export default function SchedulePage() {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Schedule Management</h1>
                 <p className="text-gray-600 mt-1">Create and manage employee schedules</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Today: {new Date().toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </p>
               </div>
               
               {/* Week Navigation - Center */}
