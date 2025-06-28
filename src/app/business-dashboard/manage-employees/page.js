@@ -156,6 +156,48 @@ export default function ManageEmployeesPage() {
     try {
       setLoading(true);
       
+      // Get the original employee data to compare changes
+      const originalEmployee = allEmployees.find(emp => emp.emp_id === editingEmployee.emp_id);
+      if (!originalEmployee) {
+        throw new Error('Original employee data not found');
+      }
+
+      // Detect what fields have changed
+      const changes = [];
+      const fieldsToCheck = [
+        { field: 'first_name', label: 'First Name' },
+        { field: 'last_name', label: 'Last Name' },
+        { field: 'email_address', label: 'Email Address' },
+        { field: 'last4ssn', label: 'SSN' },
+        { field: 'dob', label: 'Date of Birth' },
+        { field: 'role_id', label: 'Role' },
+        { field: 'full_time', label: 'Employment Type' }
+      ];
+
+      fieldsToCheck.forEach(({ field, label }) => {
+        if (originalEmployee[field] !== editingEmployee[field]) {
+          let oldValue = originalEmployee[field];
+          let newValue = editingEmployee[field];
+
+          // Format values for display
+          if (field === 'role_id') {
+            oldValue = getRoleName(originalEmployee[field]);
+            newValue = getRoleName(editingEmployee[field]);
+          } else if (field === 'full_time') {
+            oldValue = originalEmployee[field] ? 'Full-Time' : 'Part-Time';
+            newValue = editingEmployee[field] ? 'Full-Time' : 'Part-Time';
+          } else if (field === 'dob') {
+            oldValue = originalEmployee[field] ? new Date(originalEmployee[field]).toLocaleDateString() : 'N/A';
+            newValue = editingEmployee[field] ? new Date(editingEmployee[field]).toLocaleDateString() : 'N/A';
+          } else if (field === 'last4ssn') {
+            oldValue = originalEmployee[field] === 'XXXX' ? 'Not Set' : originalEmployee[field];
+            newValue = editingEmployee[field] === 'XXXX' ? 'Not Set' : editingEmployee[field];
+          }
+
+          changes.push({ field: label, oldValue, newValue });
+        }
+      });
+
       // Update employee details
       const { error: updateError } = await supabase
         .from('employee')
@@ -179,19 +221,41 @@ export default function ManageEmployeesPage() {
         )
       );
 
-      // Log activity: employment type change
+      // Log activity for each change
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        await supabase
-          .from('activity_log')
-          .insert({
-            business_id: businessId,
-            user_id: user?.id || null,
-            type: 'edit',
-            description: `Changed employment type for ${editingEmployee.first_name} ${editingEmployee.last_name} to ${editingEmployee.full_time ? 'Full-Time' : 'Part-Time'}`,
-            employee_id: editingEmployee.emp_id,
-            metadata: { field: 'employment_type', new_value: editingEmployee.full_time ? 'Full-Time' : 'Part-Time' }
-          });
+        
+        if (changes.length > 0) {
+          // Log each change separately
+          for (const change of changes) {
+            await supabase
+              .from('activity_log')
+              .insert({
+                business_id: businessId,
+                user_id: user?.id || null,
+                type: 'edit',
+                description: `Updated ${change.field} for ${editingEmployee.first_name} ${editingEmployee.last_name} from "${change.oldValue}" to "${change.newValue}"`,
+                employee_id: editingEmployee.emp_id,
+                metadata: { 
+                  field: change.field.toLowerCase().replace(' ', '_'), 
+                  old_value: change.oldValue, 
+                  new_value: change.newValue 
+                }
+              });
+          }
+        } else {
+          // Log a general update if no specific changes detected
+          await supabase
+            .from('activity_log')
+            .insert({
+              business_id: businessId,
+              user_id: user?.id || null,
+              type: 'edit',
+              description: `Updated employee information for ${editingEmployee.first_name} ${editingEmployee.last_name}`,
+              employee_id: editingEmployee.emp_id,
+              metadata: { field: 'general_update' }
+            });
+        }
       } catch (err) {
         console.error('Failed to log activity:', err);
       }
