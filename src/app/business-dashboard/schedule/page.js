@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from '../../../supabaseClient';
 import Sidebar from '../components/Sidebar';
 import DashboardHeader from '../components/DashboardHeader';
 import DashboardFooter from '../components/DashboardFooter';
 import { getBusinessIdForCurrentUser } from '../roleUtils';
+import { createPortal } from "react-dom";
 
 // Utility functions
 const getStartOfWeek = (date) => {
@@ -66,10 +67,102 @@ const getTotalHoursColor = (total, max) => {
   return 'text-green-600';
 };
 
+const checkAvailabilityConflict = (employee, shiftTime, dayOfWeek) => {
+  if (!employee.availability || employee.availability.length === 0) {
+    return { hasConflict: false, message: null };
+  }
+
+  // Find availability for the specific day
+  const dayAvailability = employee.availability.find(avail => avail.day_of_week === dayOfWeek);
+  
+  if (!dayAvailability) {
+    return { 
+      hasConflict: true, 
+      message: `${employee.first_name} is not available on ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek]}` 
+    };
+  }
+
+  // Parse shift times
+  let shiftStart, shiftEnd;
+  if (typeof shiftTime === 'string') {
+    // Handle "9:00 AM - 5:00 PM" format
+    [shiftStart, shiftEnd] = shiftTime.split(' - ').map(convertTo24HourFormat);
+  } else if (shiftTime.startTime && shiftTime.endTime) {
+    // Handle object format
+    shiftStart = shiftTime.startTime;
+    shiftEnd = shiftTime.endTime;
+  } else {
+    return { hasConflict: false, message: null };
+  }
+
+  // Parse availability times
+  const availStart = dayAvailability.start_time;
+  const availEnd = dayAvailability.end_time;
+
+  // Check if shift is within availability window
+  const shiftStartMinutes = parseInt(shiftStart.split(':')[0]) * 60 + parseInt(shiftStart.split(':')[1]);
+  let shiftEndMinutes = parseInt(shiftEnd.split(':')[0]) * 60 + parseInt(shiftEnd.split(':')[1]);
+  const availStartMinutes = parseInt(availStart.split(':')[0]) * 60 + parseInt(availStart.split(':')[1]);
+  let availEndMinutes = parseInt(availEnd.split(':')[0]) * 60 + parseInt(availEnd.split(':')[1]);
+
+  // Handle overnight shifts
+  if (shiftEndMinutes < shiftStartMinutes) {
+    shiftEndMinutes += 24 * 60;
+  }
+  if (availEndMinutes < availStartMinutes) {
+    availEndMinutes += 24 * 60;
+  }
+
+  const isWithinAvailability = shiftStartMinutes >= availStartMinutes && shiftEndMinutes <= availEndMinutes;
+
+  if (!isWithinAvailability) {
+    return {
+      hasConflict: true,
+      message: `${employee.first_name} is only available ${formatTime(availStart)} - ${formatTime(availEnd)} on ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek]}, but you're scheduling them for ${formatTime(shiftStart)} - ${formatTime(shiftEnd)}`
+    };
+  }
+
+  return { hasConflict: false, message: null };
+};
+
+// TooltipPortal component for robust tooltips
+const TooltipPortal = ({ children, anchorRef, visible }) => {
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const tooltipRef = useRef(null);
+
+  useEffect(() => {
+    if (anchorRef.current && visible) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.top + window.scrollY - 8, // 8px above
+        left: rect.right + window.scrollX + 8, // 8px to the right
+      });
+    }
+  }, [anchorRef, visible]);
+
+  if (!visible) return null;
+  return createPortal(
+    <div
+      ref={tooltipRef}
+      style={{
+        position: "absolute",
+        top: coords.top,
+        left: coords.left,
+        zIndex: 9999,
+      }}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+};
+
 // Employee List Component
 const EmployeeList = ({ employees, selectedRole, onRoleChange, onEmployeeDrop }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [draggedEmployee, setDraggedEmployee] = useState(null);
+  const [hoveredEmpId, setHoveredEmpId] = useState(null);
+  const anchorRefs = useRef({});
 
   const roles = ["All", "Managers", "Employees"];
 
@@ -77,6 +170,26 @@ const EmployeeList = ({ employees, selectedRole, onRoleChange, onEmployeeDrop })
     setIsDragging(true);
     setDraggedEmployee(employee);
     e.dataTransfer.setData('text/plain', JSON.stringify(employee));
+
+    // Create a custom drag image (just the initials in a blue circle)
+    const dragIcon = document.createElement('div');
+    dragIcon.style.position = 'absolute';
+    dragIcon.style.top = '-1000px';
+    dragIcon.style.left = '-1000px';
+    dragIcon.style.padding = '8px 12px';
+    dragIcon.style.background = '#2563eb';
+    dragIcon.style.color = 'white';
+    dragIcon.style.fontWeight = 'bold';
+    dragIcon.style.borderRadius = '9999px';
+    dragIcon.style.fontSize = '14px';
+    dragIcon.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
+    dragIcon.innerText = `${employee.first_name?.[0] ?? ''}${employee.last_name?.[0] ?? ''}`;
+    document.body.appendChild(dragIcon);
+    e.dataTransfer.setDragImage(dragIcon, 16, 16);
+    // Clean up after drag
+    setTimeout(() => {
+      document.body.removeChild(dragIcon);
+    }, 0);
   };
 
   const handleDragEnd = () => {
@@ -135,7 +248,7 @@ const EmployeeList = ({ employees, selectedRole, onRoleChange, onEmployeeDrop })
       </div>
       
       <div className="p-4">
-        <div className="space-y-3 max-h-96 overflow-y-auto">
+        <div className="space-y-3 max-h-96 overflow-y-auto relative">
           {employees.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,7 +259,9 @@ const EmployeeList = ({ employees, selectedRole, onRoleChange, onEmployeeDrop })
           ) : (
             employees.map((employee) => {
               const availabilityText = getAvailabilityText(employee);
-              
+              if (!anchorRefs.current[employee.emp_id]) {
+                anchorRefs.current[employee.emp_id] = React.createRef();
+              }
               return (
                 <div
                   key={employee.emp_id}
@@ -177,30 +292,39 @@ const EmployeeList = ({ employees, selectedRole, onRoleChange, onEmployeeDrop })
                       </p>
                     </div>
                     {availabilityText && (
-                      <div className="group relative">
+                      <div
+                        className="group relative"
+                        ref={anchorRefs.current[employee.emp_id]}
+                        onMouseEnter={() => setHoveredEmpId(employee.emp_id)}
+                        onMouseLeave={() => setHoveredEmpId(null)}
+                      >
                         <div className="text-xs text-green-600 text-right max-w-24 cursor-help">
                           {availabilityText}
                         </div>
-                        {/* Detailed Availability Tooltip */}
-                        <div className="absolute bottom-full right-0 mb-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                          <div className="text-xs font-medium text-gray-900 mb-2">Weekly Availability</div>
-                          <div className="space-y-1">
-                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dayName, index) => {
-                              const dayAvailability = employee.availability.find(avail => avail.day_of_week === index);
-                              return (
-                                <div key={dayName} className="flex justify-between text-xs">
-                                  <span className="text-gray-600 w-8">{dayName}:</span>
-                                  <span className={dayAvailability ? 'text-green-600' : 'text-gray-400'}>
-                                    {dayAvailability 
-                                      ? `${formatTime(dayAvailability.start_time)} - ${formatTime(dayAvailability.end_time)}`
-                                      : 'Not available'
-                                    }
-                                  </span>
-                                </div>
-                              );
-                            })}
+                        <TooltipPortal
+                          anchorRef={anchorRefs.current[employee.emp_id]}
+                          visible={hoveredEmpId === employee.emp_id}
+                        >
+                          <div className="w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                            <div className="text-xs font-medium text-gray-900 mb-2">Weekly Availability</div>
+                            <div className="space-y-1">
+                              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dayName, index) => {
+                                const dayAvailability = employee.availability.find(avail => avail.day_of_week === index);
+                                return (
+                                  <div key={dayName} className="flex justify-between text-xs">
+                                    <span className="text-gray-600 w-8">{dayName}:</span>
+                                    <span className={dayAvailability ? 'text-green-600' : 'text-gray-400'}>
+                                      {dayAvailability 
+                                        ? `${formatTime(dayAvailability.start_time)} - ${formatTime(dayAvailability.end_time)}`
+                                        : 'Not available'
+                                      }
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
+                        </TooltipPortal>
                       </div>
                     )}
                   </div>
@@ -439,7 +563,6 @@ const ShiftControls = ({ shiftTimes, setShiftTimes, onShiftDrop }) => {
                 ))}
               </select>
             </div>
-            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
               <select
@@ -454,91 +577,137 @@ const ShiftControls = ({ shiftTimes, setShiftTimes, onShiftDrop }) => {
               </select>
             </div>
           </div>
-          
+
+          {/* Add Button */}
           <button
             onClick={handleAddShift}
-            className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm hover:shadow-md"
+            disabled={!newShiftStart || !newShiftEnd}
+            className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
           >
-            <div className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Shift
-            </div>
+            Add Shift
           </button>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-gray-700">Available Shifts</h4>
-            <span className="text-xs text-gray-500">{shiftTimes.length} shifts</span>
-          </div>
-          <div className="space-y-3">
-            {shiftTimes.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-sm">No shifts created yet</p>
-                <p className="text-xs text-gray-400 mt-1">Create your first shift above</p>
-              </div>
-            ) : (
-              shiftTimes.map((shift) => (
+        {/* Existing Shifts */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium text-gray-900">Available Shifts</h4>
+          {shiftTimes.length === 0 ? (
+            <div className="text-center py-4 text-gray-500">
+              <p className="text-sm">No shifts created yet</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {shiftTimes.map((shift) => (
                 <div
                   key={shift.id}
                   draggable
                   onDragStart={(e) => handleShiftDragStart(e, shift)}
-                  className="p-4 border rounded-lg cursor-move transition-all bg-green-50 border-green-200 hover:bg-green-100 hover:shadow-sm"
+                  className="p-3 bg-gray-50 border border-gray-200 rounded-lg cursor-move hover:bg-gray-100 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-green-800">{shift.displayTime}</span>
-                      {shift.title && (
-                        <p className="text-xs text-green-600 mt-1">{shift.title}</p>
-                      )}
-                    </div>
-                    <div className="text-green-400">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                      </svg>
-                    </div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {shift.title || 'Shift'}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {shift.time || shift.displayTime}
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-export default function SchedulePage() {
+// Inline Conflict Notification Component
+const ConflictNotification = ({ show, message, onConfirm, onCancel, onDismiss }) => {
+  if (!show) return null;
+  
+  return (
+    <div className="fixed top-4 right-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-lg p-4 max-w-md z-50 animate-in slide-in-from-right duration-300">
+      <div className="flex items-start">
+        <div className="flex-shrink-0">
+          <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        </div>
+        <div className="ml-3 flex-1">
+          <h3 className="text-sm font-medium text-yellow-800">Availability Conflict</h3>
+          <p className="text-sm text-yellow-700 mt-1">{message}</p>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={onConfirm}
+              className="px-3 py-1.5 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 transition-colors"
+            >
+              Schedule Anyway
+            </button>
+            <button
+              onClick={onCancel}
+              className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="ml-2 flex-shrink-0 text-yellow-400 hover:text-yellow-600"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+function SchedulePage() {
   const router = useRouter();
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [employees, setEmployees] = useState([]);
-  const [selectedRole, setSelectedRole] = useState("All");
-  const [shiftTimes, setShiftTimes] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [dates, setDates] = useState(getWeekDates(currentWeek));
+  const [rowCount, setRowCount] = useState(8);
   const [employeeAssignments, setEmployeeAssignments] = useState({});
   const [shiftAssignments, setShiftAssignments] = useState({});
-  const [businessId, setBusinessId] = useState(null);
-  const [logoutLoading, setLogoutLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState("All");
+  const [employees, setEmployees] = useState([]);
+  const [shiftTimes, setShiftTimes] = useState([]);
+  const [totalHours, setTotalHours] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [rowCount, setRowCount] = useState(6);
-  const [totalHours, setTotalHours] = useState(0);
+  const [logoutLoading, setLogoutLoading] = useState(false);
+  const [businessId, setBusinessId] = useState(null);
+  const [conflictDialog, setConflictDialog] = useState({ 
+    show: false, 
+    message: '', 
+    employeeName: '', 
+    shiftTime: '', 
+    pendingAssignment: null 
+  });
 
-  // Get week dates
-  const dates = useMemo(() => getWeekDates(currentWeek), [currentWeek]);
+  useEffect(() => {
+    async function initializeBusinessId() {
+      try {
+        const bId = await getBusinessIdForCurrentUser();
+        setBusinessId(bId);
+      } catch (err) {
+        console.error('Error getting business ID:', err);
+        setError('Failed to get business information.');
+      }
+    }
+    initializeBusinessId();
+  }, []);
+
+  useEffect(() => {
+    if (businessId) {
+      fetchData();
+    }
+  }, [businessId]);
 
   // Filter employees based on selected role
   const filteredEmployees = useMemo(() => {
@@ -554,54 +723,6 @@ export default function SchedulePage() {
              emp.role_name?.toLowerCase().includes('staff');
     });
   }, [employees, selectedRole]);
-
-  useEffect(() => {
-    async function initializePage() {
-      setLoading(true);
-      try {
-        const bId = await getBusinessIdForCurrentUser();
-        setBusinessId(bId);
-        if (bId) {
-          await Promise.all([
-            fetchEmployees(bId),
-            loadExistingSchedule(bId)
-          ]);
-        }
-      } catch (err) {
-        setError('Failed to initialize schedule page.');
-      } finally {
-        setLoading(false);
-      }
-    }
-    initializePage();
-  }, []);
-
-  const testDatabaseConnection = async () => {
-    try {
-      // Test if employee table is accessible
-      const { data: testData, error: testError } = await supabase
-        .from('employee')
-        .select('emp_id')
-        .limit(1);
-      
-      if (testError) {
-        console.error('Database connection test failed:', testError);
-        throw new Error('Database connection failed');
-      }
-      
-      console.log('Database connection test successful');
-    } catch (err) {
-      console.error('Database test error:', err);
-      throw err;
-    }
-  };
-
-  // Reload schedule when date changes
-  useEffect(() => {
-    if (businessId) {
-      loadExistingSchedule(businessId);
-    }
-  }, [currentWeek, businessId]);
 
   // Recalculate total hours when assignments change
   useEffect(() => {
@@ -647,9 +768,10 @@ export default function SchedulePage() {
     })));
   }, [employeeAssignments, shiftAssignments]);
 
-  const fetchEmployees = async (bId) => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch employees with their availability
+      const { data: employees, error: employeeError } = await supabase
         .from('employee')
         .select(`
           emp_id,
@@ -658,96 +780,49 @@ export default function SchedulePage() {
           role_id,
           roles(role_name)
         `)
-        .eq('business_id', bId)
+        .eq('business_id', businessId)
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (employeeError) throw employeeError;
       
       // Fetch availability for each employee
       const employeesWithAvailability = await Promise.all(
-        data.map(async (emp) => {
-          const { data: availabilityData } = await supabase
-            .from('employee_availability')
-            .select('day_of_week, start_time, end_time, is_available')
-            .eq('employee_id', emp.emp_id)
-            .eq('is_available', true);
+        employees.map(async (emp) => {
+          try {
+            const { data: availabilityData } = await supabase
+              .from('employee_availability')
+              .select('day_of_week, start_time, end_time, is_available')
+              .eq('employee_id', emp.emp_id)
+              .eq('is_available', true);
 
-          return {
-            ...emp,
-            role_name: emp.roles?.role_name || 'Unknown Role',
-            shiftHours: 0,
-            availability: availabilityData || []
-          };
+            return {
+              ...emp,
+              role_name: emp.roles?.role_name || 'Unknown Role',
+              shiftHours: 0,
+              availability: availabilityData || []
+            };
+          } catch (availabilityError) {
+            console.warn('Could not fetch availability for employee:', emp.emp_id, availabilityError);
+            return {
+              ...emp,
+              role_name: emp.roles?.role_name || 'Unknown Role',
+              shiftHours: 0,
+              availability: []
+            };
+          }
         })
       );
       
       setEmployees(employeesWithAvailability);
-    } catch (err) {
-      setError('Failed to fetch employees.');
-    }
-  };
-
-  const loadExistingSchedule = async (bId) => {
-    try {
-      const weekStartDate = getStartOfWeek(currentWeek).toISOString().split('T')[0];
       
-      // Check if schedule exists for this week
-      const { data: schedule, error: scheduleError } = await supabase
-        .from('schedule')
-        .select('schedule_id, title, description')
-        .eq('business_id', bId)
-        .eq('week_start_date', weekStartDate)
-        .maybeSingle(); // Use maybeSingle instead of single to avoid errors if no schedule exists
-
-      if (scheduleError) {
-        console.error('Error loading schedule:', scheduleError);
-        return;
-      }
-
-      if (schedule) {
-        setEmployeeAssignments(schedule.employeeAssignments);
-        setShiftAssignments(schedule.shiftAssignments);
-      } else {
-        // No existing schedule found, reset state
-        setEmployeeAssignments({});
-        setShiftAssignments({});
-      }
+      // For now, start with empty shifts - users can create them
+      setShiftTimes([]);
+      setLoading(false);
     } catch (err) {
-      console.error('Error loading schedule:', err);
-      setError('Failed to load schedule data.');
+      console.error('Error fetching data:', err);
+      setError('Failed to load data. Please try again later.');
+      setLoading(false);
     }
-  };
-
-  const handleDrop = (e, item, type, dayKey, rowIndex) => {
-    const cellId = `${rowIndex}-${dayKey}`;
-    
-    if (type === 'employee') {
-      setEmployeeAssignments(prev => ({
-        ...prev,
-        [cellId]: item
-      }));
-    } else if (type === 'shift') {
-      setShiftAssignments(prev => ({
-        ...prev,
-        [cellId]: item
-      }));
-    }
-  };
-
-  const handleRemoveShift = (cellId) => {
-    setShiftAssignments(prev => {
-      const newAssignments = { ...prev };
-      delete newAssignments[cellId];
-      return newAssignments;
-    });
-  };
-
-  const handleRemoveEmployee = (cellId) => {
-    setEmployeeAssignments(prev => {
-      const newAssignments = { ...prev };
-      delete newAssignments[cellId];
-      return newAssignments;
-    });
   };
 
   const handleCreateSchedule = async () => {
@@ -826,6 +901,131 @@ export default function SchedulePage() {
     setTimeout(() => {
       router.push('/login');
     }, 1500);
+  };
+
+  const handleConflictConfirm = () => {
+    if (conflictDialog.pendingAssignment) {
+      const { cellId, employee, shift, type } = conflictDialog.pendingAssignment;
+      
+      if (type === 'employee') {
+        setEmployeeAssignments(prev => ({
+          ...prev,
+          [cellId]: employee
+        }));
+      } else if (type === 'shift') {
+        setShiftAssignments(prev => ({
+          ...prev,
+          [cellId]: shift
+        }));
+      }
+    }
+    
+    // Close dialog
+    setConflictDialog({
+      show: false,
+      message: '',
+      employeeName: '',
+      shiftTime: '',
+      pendingAssignment: null
+    });
+  };
+
+  const handleConflictCancel = () => {
+    // Close dialog without making assignment
+    setConflictDialog({
+      show: false,
+      message: '',
+      employeeName: '',
+      shiftTime: '',
+      pendingAssignment: null
+    });
+  };
+
+  const handleConflictDismiss = () => {
+    // Dismiss the notification without making any changes
+    setConflictDialog({
+      show: false,
+      message: '',
+      employeeName: '',
+      shiftTime: '',
+      pendingAssignment: null
+    });
+  };
+
+  const handleDrop = (e, item, type, dayKey, rowIndex) => {
+    const cellId = `${rowIndex}-${dayKey}`;
+    
+    if (type === 'employee') {
+      // Check if there's already a shift assigned to this cell
+      const existingShift = shiftAssignments[cellId];
+      
+      if (existingShift) {
+        // Check for availability conflict
+        const dayOfWeek = new Date(dayKey).getDay();
+        const conflict = checkAvailabilityConflict(item, existingShift, dayOfWeek);
+        
+        if (conflict.hasConflict) {
+          // Show confirmation dialog
+          setConflictDialog({
+            show: true,
+            message: conflict.message,
+            employeeName: `${item.first_name} ${item.last_name}`,
+            shiftTime: typeof existingShift === 'string' ? existingShift : existingShift.time,
+            pendingAssignment: { cellId, employee: item, type: 'employee' }
+          });
+          return;
+        }
+      }
+      
+      // No conflict, proceed with assignment
+      setEmployeeAssignments(prev => ({
+        ...prev,
+        [cellId]: item
+      }));
+    } else if (type === 'shift') {
+      // Check if there's already an employee assigned to this cell
+      const existingEmployee = employeeAssignments[cellId];
+      
+      if (existingEmployee) {
+        // Check for availability conflict
+        const dayOfWeek = new Date(dayKey).getDay();
+        const conflict = checkAvailabilityConflict(existingEmployee, item, dayOfWeek);
+        
+        if (conflict.hasConflict) {
+          // Show confirmation dialog
+          setConflictDialog({
+            show: true,
+            message: conflict.message,
+            employeeName: `${existingEmployee.first_name} ${existingEmployee.last_name}`,
+            shiftTime: typeof item === 'string' ? item : item.time,
+            pendingAssignment: { cellId, shift: item, type: 'shift' }
+          });
+          return;
+        }
+      }
+      
+      // No conflict, proceed with assignment
+      setShiftAssignments(prev => ({
+        ...prev,
+        [cellId]: item
+      }));
+    }
+  };
+
+  const handleRemoveShift = (cellId) => {
+    setShiftAssignments(prev => {
+      const newAssignments = { ...prev };
+      delete newAssignments[cellId];
+      return newAssignments;
+    });
+  };
+
+  const handleRemoveEmployee = (cellId) => {
+    setEmployeeAssignments(prev => {
+      const newAssignments = { ...prev };
+      delete newAssignments[cellId];
+      return newAssignments;
+    });
   };
 
   if (loading) {
@@ -985,6 +1185,15 @@ export default function SchedulePage() {
         <DashboardFooter />
       </div>
       
+      {/* Availability Conflict Dialog */}
+      <ConflictNotification
+        show={conflictDialog.show}
+        message={conflictDialog.message}
+        onConfirm={handleConflictConfirm}
+        onCancel={handleConflictCancel}
+        onDismiss={handleConflictDismiss}
+      />
+      
       {sidebarOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
@@ -993,4 +1202,6 @@ export default function SchedulePage() {
       )}
     </div>
   );
-} 
+}
+
+export default SchedulePage; 
