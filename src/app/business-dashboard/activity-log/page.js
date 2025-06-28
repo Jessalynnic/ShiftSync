@@ -28,6 +28,7 @@ export default function ActivityLogPage() {
   const [pageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [businessId, setBusinessId] = useState(null);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   useEffect(() => {
     async function fetchBusinessIdAndActivities() {
@@ -81,11 +82,25 @@ export default function ActivityLogPage() {
     router.push('/business-dashboard');
   };
 
+  const handleLogout = async () => {
+    setLogoutLoading(true);
+    setError('');
+    const { error } = await supabase.auth.signOut();
+    setLogoutLoading(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setTimeout(() => {
+      router.push('/login');
+    }, 1500);
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <Sidebar pathname={pathname} router={router} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       <div className="lg:ml-64 flex flex-col min-h-screen">
-        <DashboardHeader title="Activity Log" sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <DashboardHeader title="Activity Log" sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} loading={logoutLoading} handleLogout={handleLogout} />
         <div className="flex-1 p-6 max-w-6xl mx-auto">
           <div className="mb-6 flex items-center justify-between">
             <button onClick={handleBack} className="text-blue-600 hover:underline text-sm font-medium">&larr; Back to Dashboard</button>
