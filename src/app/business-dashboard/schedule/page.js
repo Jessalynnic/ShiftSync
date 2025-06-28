@@ -483,7 +483,8 @@ export default function SchedulePage() {
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [rowCount, setRowCount] = useState(8);
+  const [rowCount, setRowCount] = useState(6);
+  const [totalHours, setTotalHours] = useState(0);
 
   // Get week dates
   const dates = useMemo(() => getWeekDates(currentWeek), [currentWeek]);
@@ -584,6 +585,9 @@ export default function SchedulePage() {
         employeeHours[employee.emp_id] += hours;
       }
     });
+
+    // Update total hours state
+    setTotalHours(total);
 
     // Update employee shift hours
     setEmployees(prev => prev.map(emp => ({
@@ -804,6 +808,8 @@ export default function SchedulePage() {
                 <h1 className="text-3xl font-bold text-gray-900">Schedule Management</h1>
                 <p className="text-gray-600 mt-1">Create and manage employee schedules</p>
               </div>
+              
+              {/* Week Navigation - Center */}
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setCurrentWeek(new Date(currentWeek.getTime() - 7 * 24 * 60 * 60 * 1000))}
@@ -824,6 +830,21 @@ export default function SchedulePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
+              </div>
+              
+              {/* Total Hours Display - Right */}
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-sm text-gray-500">Total Hours</div>
+                  <div className={`text-2xl font-bold ${getTotalHoursColor(totalHours, 500)}`}>
+                    {totalHours}
+                  </div>
+                </div>
+                <div className="w-px h-12 bg-gray-300"></div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-500">Max Hours</div>
+                  <div className="text-2xl font-bold text-gray-900">500</div>
+                </div>
               </div>
             </div>
 
