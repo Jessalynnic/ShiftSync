@@ -88,6 +88,7 @@ function RecentActivitiesSection({ businessId }) {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const router = useRouter();
 
   useEffect(() => {
     if (!businessId) return;
@@ -113,7 +114,12 @@ function RecentActivitiesSection({ businessId }) {
     <section className="mb-8">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-900">Recent Activities</h2>
-        <a href="/activity-log" className="text-blue-600 text-sm hover:underline">View All</a>
+        <button
+          onClick={() => router.push('/business-dashboard/activity-log')}
+          className="text-blue-600 text-sm hover:underline"
+        >
+          View All
+        </button>
       </div>
       {loading ? (
         <div className="text-gray-500 text-sm py-8 text-center">Loading activities...</div>
