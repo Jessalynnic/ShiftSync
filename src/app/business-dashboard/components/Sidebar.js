@@ -99,7 +99,7 @@ export default function Sidebar({ pathname, router, sidebarOpen, setSidebarOpen 
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6 space-y-2">
           <SidebarItem icon={<DashboardIcon />} label="Dashboard" active={pathname === "/business-dashboard"} onClick={() => router.push("/business-dashboard")} />
-          <SidebarItem icon={<ScheduleIcon />} label="Schedule" />
+          <SidebarItem icon={<ScheduleIcon />} label="Schedule" active={pathname === "/business-dashboard/schedule"} onClick={() => router.push("/business-dashboard/schedule")} />
           <SidebarItem icon={<EmployeesIcon />} label="Employees" active={pathname === "/business-dashboard/manage-employees"} onClick={() => router.push("/business-dashboard/manage-employees")} />
           <SidebarItem icon={<RequestsIcon />} label="Requests" />
           <SidebarItem icon={<ReportsIcon />} label="Reports" />
