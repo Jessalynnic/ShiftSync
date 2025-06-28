@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../supabaseClient';
-import { DashboardIcon, ScheduleIcon, EmployeesIcon, RequestsIcon, ReportsIcon, SettingsIcon } from "./SidebarIcons";
+import { DashboardIcon, ScheduleIcon, EmployeesIcon, RequestsIcon, ReportsIcon, SettingsIcon, AccountIcon } from "./SidebarIcons";
 
 export default function Sidebar({ pathname, router, sidebarOpen, setSidebarOpen }) {
   const [businessOwner, setBusinessOwner] = useState({
@@ -103,24 +103,28 @@ export default function Sidebar({ pathname, router, sidebarOpen, setSidebarOpen 
           <SidebarItem icon={<EmployeesIcon />} label="Employees" active={pathname === "/business-dashboard/manage-employees"} onClick={() => router.push("/business-dashboard/manage-employees")} />
           <SidebarItem icon={<RequestsIcon />} label="Requests" />
           <SidebarItem icon={<ReportsIcon />} label="Reports" />
+          <SidebarItem icon={<AccountIcon />} label="Account" active={pathname === "/business-dashboard/account"} onClick={() => router.push("/business-dashboard/account")} />
           <SidebarItem icon={<SettingsIcon />} label="Settings" active={pathname === "/business-dashboard/settings"} onClick={() => router.push("/business-dashboard/settings")} />
         </nav>
 
         {/* User Profile */}
         <div className="p-4">
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+          <button 
+            onClick={() => router.push("/business-dashboard/account")}
+            className="w-full flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
             <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
               <span className="text-white text-sm font-semibold">
                 {getInitials(businessOwner.first_name, businessOwner.last_name)}
               </span>
             </div>
-            <div className="flex-1">
+            <div className="flex-1 text-left">
               <div className="text-sm font-medium text-gray-900">
                 {getDisplayName(businessOwner.first_name, businessOwner.last_name)}
               </div>
               <div className="text-xs text-gray-500">Business Owner</div>
             </div>
-          </div>
+          </button>
         </div>
       </div>
     </aside>

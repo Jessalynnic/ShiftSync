@@ -1,6 +1,10 @@
 "use client";
 
+import { useRouter } from 'next/navigation';
+
 export default function DashboardHeader({ title, sidebarOpen, setSidebarOpen, loading, handleLogout }) {
+  const router = useRouter();
+
   return (
     <nav className="w-full flex items-center justify-between px-6 py-4 bg-white shadow-sm border-b border-blue-100">
       <div className="flex items-center gap-4">
@@ -26,7 +30,11 @@ export default function DashboardHeader({ title, sidebarOpen, setSidebarOpen, lo
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
         </button>
-        <button className="p-2 rounded-lg hover:bg-gray-100">
+        <button 
+          onClick={() => router.push('/business-dashboard/account')}
+          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          title="Business Account"
+        >
           <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
