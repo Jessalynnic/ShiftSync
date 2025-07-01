@@ -133,10 +133,17 @@ const TooltipPortal = ({ children, anchorRef, visible }) => {
   useEffect(() => {
     if (anchorRef.current && visible) {
       const rect = anchorRef.current.getBoundingClientRect();
-      setCoords({
-        top: rect.top + window.scrollY - 8, // 8px above
-        left: rect.right + window.scrollX + 8, // 8px to the right
-      });
+      let left = rect.right + window.scrollX + 8; // default: right of anchor
+      let top = rect.top + window.scrollY - 8;
+      let popoverWidth = 320; // default width, will update after mount
+      if (tooltipRef.current) {
+        popoverWidth = tooltipRef.current.offsetWidth;
+      }
+      // If popover would overflow right edge, show to the left
+      if (left + popoverWidth > window.innerWidth) {
+        left = rect.left + window.scrollX - popoverWidth - 8;
+      }
+      setCoords({ top, left });
     }
   }, [anchorRef, visible]);
 
