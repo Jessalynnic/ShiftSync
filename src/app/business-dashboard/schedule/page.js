@@ -248,7 +248,7 @@ const EmployeeList = ({ employees, selectedRole, onRoleChange, onEmployeeDrop })
       </div>
       
       <div className="p-4">
-        <div className="space-y-3 max-h-96 overflow-y-auto relative">
+        <div className="space-y-3 max-h-96 overflow-y-auto scrollbar-styled relative">
           {employees.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -309,7 +309,7 @@ const EmployeeList = ({ employees, selectedRole, onRoleChange, onEmployeeDrop })
                             <div className="text-xs font-medium text-gray-900 mb-2">Weekly Availability</div>
                             <div className="space-y-1">
                               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dayName, index) => {
-                                const dayAvailability = employee.availability.find(avail => avail.day_of_week === index);
+                                const dayAvailability = employee.availability.find(avail => Number(avail.day_of_week) === index && avail.is_available);
                                 return (
                                   <div key={dayName} className="flex justify-between text-xs">
                                     <span className="text-gray-600 w-8">{dayName}:</span>
@@ -339,7 +339,7 @@ const EmployeeList = ({ employees, selectedRole, onRoleChange, onEmployeeDrop })
 };
 
 // Schedule Grid Component
-const ScheduleGrid = ({ employees, weekDays, employeeAssignments, shiftAssignments, onDrop, onRemoveShift, onRemoveEmployee, rowCount, setRowCount }) => {
+const ScheduleGrid = ({ employees, weekDays, employeeAssignments, shiftAssignments, onDrop, onRemoveShift, onRemoveEmployee, rowCount, setRowCount, openShiftEditPopover, defaultShifts, setDefaultShifts }) => {
   const handleDragOver = (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
@@ -372,17 +372,10 @@ const ScheduleGrid = ({ employees, weekDays, employeeAssignments, shiftAssignmen
             <h3 className="text-lg font-semibold text-gray-900">Weekly Schedule</h3>
             <p className="text-sm text-gray-500 mt-1">Drag employees and shifts to create assignments</p>
           </div>
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-700">Number of Rows:</label>
-            <input
-              type="number"
-              value={rowCount}
-              onChange={(e) => setRowCount(parseInt(e.target.value) || 8)}
-              min="1"
-              max="20"
-              className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          <DefaultShiftsEditor defaultShifts={defaultShifts} setDefaultShifts={setDefaultShifts} compact />
+        </div>
+        <div className="flex height-200 mt-2">
+          <DefaultShiftsChipsRow defaultShifts={defaultShifts} setDefaultShifts={setDefaultShifts} />
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -455,24 +448,33 @@ const ScheduleGrid = ({ employees, weekDays, employeeAssignments, shiftAssignmen
                           </div>
                         )}
                         {shiftAssignment && (
-                          <div className="bg-green-100 border border-green-200 rounded p-1 relative">
+                          <div
+                            className="bg-green-100 border border-green-200 rounded p-1 relative cursor-pointer flex items-center gap-1 mt-1"
+                            onClick={e => openShiftEditPopover(cellId, shiftAssignment, employeeAssignment, dayKey, { current: e.currentTarget })}
+                            title="Edit shift time"
+                          >
+                            <div>
+                              {shiftAssignment.title && (
+                                <div className="text-xs text-green-800 font-medium pr-4">{shiftAssignment.title}</div>
+                              )}
+                              <div className="text-xs text-green-600">
+                                {shiftAssignment.startTime && shiftAssignment.endTime
+                                  ? `${formatTime(shiftAssignment.startTime)} - ${formatTime(shiftAssignment.endTime)}`
+                                  : ''}
+                              </div>
+                            </div>
+                            <svg className="w-3 h-3 ml-1 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 11l6 6M3 21h18" />
+                            </svg>
                             <button
-                              onClick={() => onRemoveShift(cellId)}
+                              onClick={e => { e.stopPropagation(); onRemoveShift(cellId); }}
                               className="absolute top-0.5 right-0.5 w-4 h-4 bg-green-200 hover:bg-green-300 rounded-full flex items-center justify-center text-green-600 hover:text-green-800 transition-colors"
+                              title="Remove shift"
                             >
                               <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>
-                            <div className="text-xs font-medium text-green-800 pr-4">
-                              {shiftAssignment.title || 'Shift'}
-                            </div>
-                            <div className="text-xs text-green-600">{shiftAssignment.time || shiftAssignment.displayTime}</div>
-                          </div>
-                        )}
-                        {!employeeAssignment && !shiftAssignment && (
-                          <div className="text-center text-gray-400 text-xs py-4">
-                            Drop here
                           </div>
                         )}
                       </div>
@@ -483,138 +485,6 @@ const ScheduleGrid = ({ employees, weekDays, employeeAssignments, shiftAssignmen
             ))}
           </tbody>
         </table>
-      </div>
-    </div>
-  );
-};
-
-// Shift Controls Component
-const ShiftControls = ({ shiftTimes, setShiftTimes, onShiftDrop }) => {
-  const [newShiftStart, setNewShiftStart] = useState('');
-  const [newShiftEnd, setNewShiftEnd] = useState('');
-  const [newShiftTitle, setNewShiftTitle] = useState('');
-
-  const timeOptions = [
-    '12:00 AM', '12:30 AM', '1:00 AM', '1:30 AM', '2:00 AM', '2:30 AM', '3:00 AM', '3:30 AM',
-    '4:00 AM', '4:30 AM', '5:00 AM', '5:30 AM', '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM',
-    '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
-    '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM',
-    '4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM', '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM',
-    '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM', '10:00 PM', '10:30 PM', '11:00 PM', '11:30 PM'
-  ];
-
-  const handleAddShift = () => {
-    if (newShiftStart && newShiftEnd) {
-      const newShift = {
-        id: Date.now().toString(),
-        title: newShiftTitle || null,
-        time: `${newShiftStart} - ${newShiftEnd}`,
-        displayTime: newShiftTitle 
-          ? `${newShiftTitle}: ${newShiftStart} - ${newShiftEnd}`
-          : `${newShiftStart} - ${newShiftEnd}`,
-        startTime: convertTo24HourFormat(newShiftStart),
-        endTime: convertTo24HourFormat(newShiftEnd)
-      };
-      setShiftTimes(prev => [...prev, newShift]);
-      setNewShiftStart('');
-      setNewShiftEnd('');
-      setNewShiftTitle('');
-    }
-  };
-
-  const handleShiftDragStart = (e, shift) => {
-    e.dataTransfer.setData('text/plain', JSON.stringify(shift));
-    e.dataTransfer.effectAllowed = 'copy';
-  };
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div className="p-6 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Add Shift Time</h3>
-        <p className="text-sm text-gray-500">Create shift templates to assign to employees</p>
-      </div>
-      
-      <div className="p-6">
-        <div className="space-y-6 mb-6">
-          {/* Shift Title */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Shift Title (Optional)</label>
-            <input
-              type="text"
-              value={newShiftTitle}
-              onChange={(e) => setNewShiftTitle(e.target.value)}
-              placeholder="e.g., Morning Shift, Cashier, Manager"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-            />
-          </div>
-
-          {/* Time Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
-              <select
-                value={newShiftStart}
-                onChange={(e) => setNewShiftStart(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Select start time</option>
-                {timeOptions.map(time => (
-                  <option key={time} value={time}>{time}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
-              <select
-                value={newShiftEnd}
-                onChange={(e) => setNewShiftEnd(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Select end time</option>
-                {timeOptions.map(time => (
-                  <option key={time} value={time}>{time}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Add Button */}
-          <button
-            onClick={handleAddShift}
-            disabled={!newShiftStart || !newShiftEnd}
-            className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-          >
-            Add Shift
-          </button>
-        </div>
-
-        {/* Existing Shifts */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-900">Available Shifts</h4>
-          {shiftTimes.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">
-              <p className="text-sm">No shifts created yet</p>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {shiftTimes.map((shift) => (
-                <div
-                  key={shift.id}
-                  draggable
-                  onDragStart={(e) => handleShiftDragStart(e, shift)}
-                  className="p-3 bg-gray-50 border border-gray-200 rounded-lg cursor-move hover:bg-gray-100 transition-colors"
-                >
-                  <div className="text-sm font-medium text-gray-900">
-                    {shift.title || 'Shift'}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    {shift.time || shift.displayTime}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -663,18 +533,191 @@ const ConflictNotification = ({ show, message, onConfirm, onCancel, onDismiss })
   );
 };
 
+// ShiftSelectionPopover component
+function ShiftSelectionPopover({ open, anchorRef, onClose, onConfirm, employee, dayKey, defaultShifts }) {
+  const [selectedShift, setSelectedShift] = useState(null);
+  const [customTitle, setCustomTitle] = useState('');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+
+  useEffect(() => {
+    if (selectedShift) {
+      setCustomTitle(selectedShift.title || '');
+      setCustomStart(selectedShift.startTime || '');
+      setCustomEnd(selectedShift.endTime || '');
+    }
+  }, [selectedShift]);
+
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.key === 'Escape') onClose();
+    }
+    if (open) {
+      document.addEventListener('keydown', handleKey);
+      return () => document.removeEventListener('keydown', handleKey);
+    }
+  }, [open, onClose]);
+  if (!open || !anchorRef?.current) return null;
+  return (
+    <TooltipPortal anchorRef={anchorRef} visible={open}>
+      <div className="w-80 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50">
+        <div className="font-semibold mb-2">Assign Shift for {employee?.first_name} {employee?.last_name}</div>
+        <div className="text-xs text-gray-500 mb-2">{new Date(dayKey).toLocaleDateString()}</div>
+        {defaultShifts && defaultShifts.length > 0 && (
+          <div className="mb-3">
+            <div className="font-medium mb-1">Default Shifts:</div>
+            <div className="space-y-1">
+              {defaultShifts.map((shift, idx) => (
+                <button
+                  key={idx}
+                  className={`w-full px-3 py-1 rounded border text-left text-sm ${selectedShift === shift ? 'bg-blue-100 border-blue-400' : 'bg-gray-50 border-gray-200'}`}
+                  onClick={() => {
+                    setSelectedShift(shift);
+                    setCustomTitle(shift.title || '');
+                    setCustomStart(shift.startTime || '');
+                    setCustomEnd(shift.endTime || '');
+                  }}
+                >
+                  {shift.title ? <span className="font-semibold">{shift.title}: </span> : null}
+                  {shift.startTime} - {shift.endTime}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="mb-3">
+          <div className="font-medium mb-1">Shift Title</div>
+          <input
+            type="text"
+            value={customTitle}
+            onChange={e => {
+              setCustomTitle(e.target.value);
+              setSelectedShift(null);
+            }}
+            className="border rounded px-2 py-1 w-full mb-2"
+            placeholder="e.g. Morning, Cashier, etc."
+          />
+          <div className="font-medium mb-1">Shift Time</div>
+          <div className="flex gap-2">
+            <input
+              type="time"
+              value={customStart}
+              onChange={e => {
+                setCustomStart(e.target.value);
+                setSelectedShift(null);
+              }}
+              className="border rounded px-2 py-1"
+            />
+            <span className="self-center">to</span>
+            <input
+              type="time"
+              value={customEnd}
+              onChange={e => {
+                setCustomEnd(e.target.value);
+                setSelectedShift(null);
+              }}
+              className="border rounded px-2 py-1"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-3">
+          <button onClick={onClose} className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-sm">Cancel</button>
+          <button
+            className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm disabled:opacity-50"
+            disabled={!(customStart && customEnd)}
+            onClick={() => {
+              onConfirm({
+                title: customTitle,
+                startTime: customStart,
+                endTime: customEnd
+              });
+            }}
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </TooltipPortal>
+  );
+}
+
+// Restore DefaultShiftsEditor to display add form at the top
+function DefaultShiftsEditor({ defaultShifts, setDefaultShifts, compact }) {
+  const [newTitle, setNewTitle] = useState('');
+  const [newStart, setNewStart] = useState('');
+  const [newEnd, setNewEnd] = useState('');
+  const handleAdd = () => {
+    if (!newStart || !newEnd) return;
+    setDefaultShifts(prev => [
+      ...prev,
+      { title: newTitle, startTime: newStart, endTime: newEnd }
+    ]);
+    setNewTitle(''); setNewStart(''); setNewEnd('');
+  };
+  const handleRemove = (idx) => {
+    setDefaultShifts(prev => prev.filter((_, i) => i !== idx));
+  };
+  return (
+    <div className={`mb-6 ${compact ? '' : 'bg-white border border-gray-200 rounded-lg p-4'}`}>
+      {compact ? null : <h3 className="text-lg font-semibold mb-2">Default Shifts</h3>}
+      {compact ? null : <p className="text-xs text-gray-500 mb-3">Set default shift templates. These will appear as quick options when assigning shifts for any day.</p>}
+      {/* Add form always at the top */}
+      <form
+        className={`flex gap-1 ${compact ? '' : 'mb-2'}`}
+        onSubmit={e => { e.preventDefault(); handleAdd(); }}
+        style={compact ? { fontSize: '12px' } : {}}>
+        <input
+          type="text"
+          value={newTitle}
+          onChange={e => setNewTitle(e.target.value)}
+          placeholder="Title"
+          className={`border rounded px-1 py-0.5 text-xs ${compact ? 'w-50' : ''}`}
+          style={compact ? { minWidth: 50, maxWidth: 100 } : {}}
+        />
+        <input
+          type="time"
+          value={newStart}
+          onChange={e => setNewStart(e.target.value)}
+          className="border rounded px-1 py-0.5 text-xs w-16"
+        />
+        <input
+          type="time"
+          value={newEnd}
+          onChange={e => setNewEnd(e.target.value)}
+          className="border rounded px-1 py-0.5 text-xs w-16"
+        />
+        <button type="submit" className="px-2 py-0.5 bg-blue-600 text-white rounded text-xs">Add</button>
+      </form>
+    </div>
+  );
+}
+
+// Extract default shifts row to a new component
+function DefaultShiftsChipsRow({ defaultShifts, setDefaultShifts }) {
+  return (
+    <div className="flex flex-nowrap items-end gap-2 mt-2 overflow-x-auto justify-end w-full">
+      {defaultShifts.map((shift, idx) => (
+        <div key={idx} className="bg-blue-50 border border-blue-200 rounded px-2 py-1 flex items-center gap-2 whitespace-nowrap text-xs px-1 py-0.5" style={{ fontSize: '12px', padding: '2px 6px' }}>
+          <span className="font-semibold text-xs">{shift.title || 'Shift'}</span>
+          <span className="text-xs">{formatTime(shift.startTime)} - {formatTime(shift.endTime)}</span>
+          <button onClick={() => setDefaultShifts(prev => prev.filter((_, i) => i !== idx))} className="text-xs text-red-500 ml-1">&times;</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SchedulePage() {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [dates, setDates] = useState(getWeekDates(currentWeek));
-  const [rowCount, setRowCount] = useState(8);
+  const [rowCount, setRowCount] = useState(6);
   const [employeeAssignments, setEmployeeAssignments] = useState({});
   const [shiftAssignments, setShiftAssignments] = useState({});
   const [selectedRole, setSelectedRole] = useState("All");
   const [employees, setEmployees] = useState([]);
-  const [shiftTimes, setShiftTimes] = useState([]);
   const [totalHours, setTotalHours] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -689,6 +732,8 @@ function SchedulePage() {
     shiftTime: '', 
     pendingAssignment: null 
   });
+  const [shiftPopover, setShiftPopover] = useState({ open: false, cellId: null, employee: null, dayKey: null, anchorRef: null });
+  const [defaultShifts, setDefaultShifts] = useState([]);
 
   useEffect(() => {
     async function initializeBusinessId() {
@@ -816,7 +861,7 @@ function SchedulePage() {
       setEmployees(employeesWithAvailability);
       
       // For now, start with empty shifts - users can create them
-      setShiftTimes([]);
+      setShiftAssignments({});
       setLoading(false);
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -827,27 +872,45 @@ function SchedulePage() {
 
   const handleCreateSchedule = async () => {
     if (!businessId) return;
-    
     setIsCreating(true);
     try {
       const weekStartDate = getStartOfWeek(currentWeek).toISOString().split('T')[0];
-      
+      // Create the schedule row (without assignments)
       const { data: schedule, error: scheduleError } = await supabase
         .from('schedule')
         .insert({
           business_id: businessId,
           week_start_date: weekStartDate,
-          employeeAssignments: employeeAssignments,
-          shiftAssignments: shiftAssignments,
           created_at: new Date().toISOString()
         })
         .select()
         .single();
-
       if (scheduleError) throw scheduleError;
-
-      setEmployeeAssignments(schedule.employeeAssignments);
-      setShiftAssignments(schedule.shiftAssignments);
+      // Build assignments array from grid state
+      const assignments = [];
+      for (const cellId in employeeAssignments) {
+        const employee = employeeAssignments[cellId];
+        const shift = shiftAssignments[cellId];
+        if (
+          employee && shift &&
+          employee.emp_id != null && shift.shift_id != null
+        ) {
+          assignments.push({
+            schedule_id: schedule.id,
+            emp_id: employee.emp_id,
+            shift_id: shift.shift_id
+          });
+        }
+      }
+      console.log('ASSIGNMENTS TO INSERT:', assignments);
+      // Insert assignments into employee_shift
+      if (assignments.length > 0) {
+        console.log('Inserting into employee_shift:', assignments);
+        const { data, error } = await supabase
+          .from('employee_shift')
+          .insert(assignments);
+        if (error) throw error;
+      }
       alert("Schedule created successfully!");
     } catch (err) {
       console.error('Error creating schedule:', err);
@@ -859,31 +922,51 @@ function SchedulePage() {
 
   const handleUpdateSchedule = async () => {
     if (!businessId) return;
-    
     setIsUpdating(true);
     try {
       const weekStartDate = getStartOfWeek(currentWeek).toISOString().split('T')[0];
-      
+      // Update the schedule row (without assignments)
       const { data: schedule, error: scheduleError } = await supabase
         .from('schedule')
         .update({
-          employeeAssignments: employeeAssignments,
-          shiftAssignments: shiftAssignments,
           updated_at: new Date().toISOString()
         })
         .eq('business_id', businessId)
         .eq('week_start_date', weekStartDate)
         .select()
         .single();
-
       if (scheduleError) throw scheduleError;
-
-      setEmployeeAssignments(schedule.employeeAssignments);
-      setShiftAssignments(schedule.shiftAssignments);
+      // Build assignments array from grid state
+      const assignments = [];
+      for (const cellId in employeeAssignments) {
+        const employee = employeeAssignments[cellId];
+        const shift = shiftAssignments[cellId];
+        if (
+          employee && shift &&
+          employee.emp_id != null && shift.shift_id != null
+        ) {
+          assignments.push({
+            schedule_id: schedule.id,
+            emp_id: employee.emp_id,
+            shift_id: shift.shift_id
+          });
+        }
+      }
+      // Delete old assignments for this schedule and insert new ones
+      await supabase
+        .from('employee_shift')
+        .delete()
+        .eq('schedule_id', schedule.id);
+      if (assignments.length > 0) {
+        const { data, error } = await supabase
+          .from('employee_shift')
+          .insert(assignments);
+        if (error) throw error;
+      }
       alert("Schedule updated successfully!");
     } catch (err) {
       console.error('Error updating schedule:', err);
-      throw err;
+      alert("Failed to update schedule. Please try again.");
     } finally {
       setIsUpdating(false);
     }
@@ -954,18 +1037,29 @@ function SchedulePage() {
 
   const handleDrop = (e, item, type, dayKey, rowIndex) => {
     const cellId = `${rowIndex}-${dayKey}`;
+    // Use UTC to avoid timezone bugs when calculating day of week from date string
+    // Subtract one day to align with grid mapping
+    const dayOfWeek = new Date(new Date(dayKey + 'T00:00:00Z').getTime() - 24 * 60 * 60 * 1000).getUTCDay();
     
     if (type === 'employee') {
-      // Check if there's already a shift assigned to this cell
       const existingShift = shiftAssignments[cellId];
-      
+      const dayAvailability = item.availability.find(
+        avail => Number(avail.day_of_week) === dayOfWeek && avail.is_available
+      );
+      if (!dayAvailability) {
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        setConflictDialog({
+          show: true,
+          message: `${item.first_name} is not available on ${dayNames[dayOfWeek]}`,
+          employeeName: `${item.first_name} ${item.last_name}`,
+          shiftTime: existingShift ? (typeof existingShift === 'string' ? existingShift : existingShift.time) : 'No shift assigned yet',
+          pendingAssignment: { cellId, employee: item, type: 'employee' }
+        });
+        return;
+      }
       if (existingShift) {
-        // Check for availability conflict
-        const dayOfWeek = new Date(dayKey).getDay();
         const conflict = checkAvailabilityConflict(item, existingShift, dayOfWeek);
-        
         if (conflict.hasConflict) {
-          // Show confirmation dialog
           setConflictDialog({
             show: true,
             message: conflict.message,
@@ -976,23 +1070,12 @@ function SchedulePage() {
           return;
         }
       }
-      
-      // No conflict, proceed with assignment
-      setEmployeeAssignments(prev => ({
-        ...prev,
-        [cellId]: item
-      }));
+      setShiftPopover({ open: true, cellId, employee: item, dayKey, anchorRef: { current: e.target } });
     } else if (type === 'shift') {
-      // Check if there's already an employee assigned to this cell
       const existingEmployee = employeeAssignments[cellId];
-      
       if (existingEmployee) {
-        // Check for availability conflict
-        const dayOfWeek = new Date(dayKey).getDay();
         const conflict = checkAvailabilityConflict(existingEmployee, item, dayOfWeek);
-        
         if (conflict.hasConflict) {
-          // Show confirmation dialog
           setConflictDialog({
             show: true,
             message: conflict.message,
@@ -1003,8 +1086,6 @@ function SchedulePage() {
           return;
         }
       }
-      
-      // No conflict, proceed with assignment
       setShiftAssignments(prev => ({
         ...prev,
         [cellId]: item
@@ -1025,6 +1106,37 @@ function SchedulePage() {
       const newAssignments = { ...prev };
       delete newAssignments[cellId];
       return newAssignments;
+    });
+  };
+
+  // Handler for confirming shift selection
+  const handleShiftPopoverConfirm = (shift) => {
+    if (shiftPopover.cellId && shiftPopover.employee) {
+      setEmployeeAssignments(prev => ({
+        ...prev,
+        [shiftPopover.cellId]: shiftPopover.employee
+      }));
+      setShiftAssignments(prev => ({
+        ...prev,
+        [shiftPopover.cellId]: shift
+      }));
+    }
+    setShiftPopover({ open: false, cellId: null, employee: null, dayKey: null, anchorRef: null });
+  };
+
+  // Handler for closing popover
+  const handleShiftPopoverClose = () => {
+    setShiftPopover({ open: false, cellId: null, employee: null, dayKey: null, anchorRef: null });
+  };
+
+  // In SchedulePage, add a function to open the shift popover for editing
+  const openShiftEditPopover = (cellId, shift, employee, dayKey, anchorRef) => {
+    setShiftPopover({
+      open: true,
+      cellId,
+      employee,
+      dayKey,
+      anchorRef
     });
   };
 
@@ -1137,27 +1249,27 @@ function SchedulePage() {
                     selectedRole={selectedRole}
                     onRoleChange={setSelectedRole}
                   />
-                  
-                  <ShiftControls
-                    shiftTimes={shiftTimes}
-                    setShiftTimes={setShiftTimes}
-                    onShiftDrop={handleDrop}
-                  />
                 </div>
 
                 {/* Schedule Grid */}
                 <div className="lg:col-span-4">
-                  <ScheduleGrid
-                    employees={filteredEmployees}
-                    weekDays={dates}
-                    employeeAssignments={employeeAssignments}
-                    shiftAssignments={shiftAssignments}
-                    onDrop={handleDrop}
-                    onRemoveShift={handleRemoveShift}
-                    onRemoveEmployee={handleRemoveEmployee}
-                    rowCount={rowCount}
-                    setRowCount={setRowCount}
-                  />
+                  <div className="p-6 border-gray-200">
+                    <ScheduleGrid
+                      employees={filteredEmployees}
+                      weekDays={dates}
+                      employeeAssignments={employeeAssignments}
+                      shiftAssignments={shiftAssignments}
+                      onDrop={handleDrop}
+                      onRemoveShift={handleRemoveShift}
+                      onRemoveEmployee={handleRemoveEmployee}
+                      rowCount={rowCount}
+                      setRowCount={setRowCount}
+                      openShiftEditPopover={openShiftEditPopover}
+                      defaultShifts={defaultShifts}
+                      setDefaultShifts={setDefaultShifts}
+                    />
+                  </div>
+                  
                 </div>
               </div>
             )}
@@ -1192,6 +1304,17 @@ function SchedulePage() {
         onConfirm={handleConflictConfirm}
         onCancel={handleConflictCancel}
         onDismiss={handleConflictDismiss}
+      />
+      
+      {/* Shift Selection Popover */}
+      <ShiftSelectionPopover
+        open={shiftPopover.open}
+        anchorRef={shiftPopover.anchorRef}
+        onClose={handleShiftPopoverClose}
+        onConfirm={handleShiftPopoverConfirm}
+        employee={shiftPopover.employee}
+        dayKey={shiftPopover.dayKey}
+        defaultShifts={defaultShifts}
       />
       
       {sidebarOpen && (
