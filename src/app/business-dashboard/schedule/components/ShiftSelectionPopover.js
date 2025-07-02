@@ -2,12 +2,20 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { formatTime } from '../scheduleUtils';
+import { formatTime } from "../scheduleUtils";
 
-function ShiftSelectionPopover({ open, anchorRef, onClose, onConfirm, employee, dayKey, defaultShifts }) {
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [title, setTitle] = useState('');
+function ShiftSelectionPopover({
+  open,
+  anchorRef,
+  onClose,
+  onConfirm,
+  employee,
+  dayKey,
+  defaultShifts,
+}) {
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [title, setTitle] = useState("");
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const popoverRef = useRef(null);
 
@@ -33,20 +41,23 @@ function ShiftSelectionPopover({ open, anchorRef, onClose, onConfirm, employee, 
   }, [anchorRef, open]);
 
   function handleKey(e) {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       onClose();
-    } else if (e.key === 'Enter') {
+    } else if (e.key === "Enter") {
       handleConfirm();
     }
   }
 
   function handleConfirm() {
     if (startTime && endTime) {
-      onConfirm({
+      const shift = {
         startTime,
         endTime,
-        title: title || `${startTime} - ${endTime}`
-      });
+      };
+      if (title.trim()) {
+        shift.title = title;
+      }
+      onConfirm(shift);
     }
   }
 
@@ -72,9 +83,7 @@ function ShiftSelectionPopover({ open, anchorRef, onClose, onConfirm, employee, 
       tabIndex={0}
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Assign Shift
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-900">Assign Shift</h3>
         <button
           onClick={onClose}
           className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -87,14 +96,15 @@ function ShiftSelectionPopover({ open, anchorRef, onClose, onConfirm, employee, 
         <div className="mb-4 p-3 bg-blue-50 rounded-lg">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-              {employee.first_name?.[0]}{employee.last_name?.[0]}
+              {employee.first_name?.[0]}
+              {employee.last_name?.[0]}
             </div>
             <div>
               <div className="font-medium text-gray-900">
                 {employee.first_name} {employee.last_name}
               </div>
               <div className="text-sm text-gray-600">
-                {employee.role === 'manager' ? 'Manager' : 'Employee'}
+                {employee.role === "manager" ? "Manager" : "Employee"}
               </div>
             </div>
           </div>
@@ -114,7 +124,8 @@ function ShiftSelectionPopover({ open, anchorRef, onClose, onConfirm, employee, 
                 onClick={() => handleDefaultShiftClick(shift)}
                 className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
               >
-                {shift.title}: {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
+                {shift.title}: {formatTime(shift.startTime)} -{" "}
+                {formatTime(shift.endTime)}
               </button>
             ))}
           </div>
@@ -179,8 +190,8 @@ function ShiftSelectionPopover({ open, anchorRef, onClose, onConfirm, employee, 
         </button>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
 
-export default ShiftSelectionPopover; 
+export default ShiftSelectionPopover;

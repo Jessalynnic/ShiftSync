@@ -27,12 +27,12 @@ body {
 
 /* Custom scrollbar styling */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* Internet Explorer 10+ */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none; /* Firefox */
 }
 
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Safari and Chrome */
+  display: none; /* Safari and Chrome */
 }
 
 /* Subtle styled scrollbar for desktop */
@@ -62,15 +62,19 @@ body {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .scrollbar-styled::-webkit-scrollbar {
     display: none;
   }
 }
 
 @keyframes shimmer {
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
 }
 .shimmer-divider {
   background: linear-gradient(90deg, #e0f2fe 25%, #fff 50%, #e0f2fe 75%);
@@ -82,5 +86,7 @@ body {
   animation: fadein 1s forwards;
 }
 @keyframes fadein {
-  to { opacity: 1; }
+  to {
+    opacity: 1;
+  }
 }

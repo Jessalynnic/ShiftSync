@@ -1,31 +1,31 @@
-import { useState, useEffect } from 'react';
-import { getBusinessRoles } from './roleUtils';
-import { addEmployee } from './employeeUtils';
+import { useState, useEffect } from "react";
+import { getBusinessRoles } from "./roleUtils";
+import { addEmployee } from "./employeeUtils";
 
 export default function AddEmployeeModal({ open, onClose, businessId }) {
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [dob, setDob] = useState('');
-  const [email, setEmail] = useState('');
-  const [ssn, setSsn] = useState('');
-  const [role, setRole] = useState('');
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [dob, setDob] = useState("");
+  const [email, setEmail] = useState("");
+  const [ssn, setSsn] = useState("");
+  const [role, setRole] = useState("");
   const [roles, setRoles] = useState([]);
-  const [employmentType, setEmploymentType] = useState('');
+  const [employmentType, setEmploymentType] = useState("");
   const [loadingRoles, setLoadingRoles] = useState(false);
-  const [rolesError, setRolesError] = useState('');
+  const [rolesError, setRolesError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (open && businessId) {
       setLoadingRoles(true);
-      setRolesError('');
+      setRolesError("");
       getBusinessRoles(businessId)
-        .then(data => setRoles(data))
+        .then((data) => setRoles(data))
         .catch(() => {
           setRoles([]);
-          setRolesError('Failed to fetch roles.');
+          setRolesError("Failed to fetch roles.");
         })
         .finally(() => setLoadingRoles(false));
     }
@@ -34,8 +34,8 @@ export default function AddEmployeeModal({ open, onClose, businessId }) {
   // Format DOB as MM/DD/YYYY
   const handleDobChange = (e) => {
     const text = e.target.value;
-    const digits = text.replace(/\D/g, '');
-    let formatted = '';
+    const digits = text.replace(/\D/g, "");
+    let formatted = "";
     if (digits.length <= 2) {
       formatted = digits;
     } else if (digits.length <= 4) {
@@ -49,19 +49,19 @@ export default function AddEmployeeModal({ open, onClose, businessId }) {
   };
 
   const resetForm = () => {
-    setFirstName('');
-    setLastName('');
-    setDob('');
-    setEmail('');
-    setSsn('');
-    setRole('');
-    setEmploymentType('');
+    setFirstName("");
+    setLastName("");
+    setDob("");
+    setEmail("");
+    setSsn("");
+    setRole("");
+    setEmploymentType("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
     setSuccess(false);
     const result = await addEmployee({
       firstName,
@@ -82,7 +82,7 @@ export default function AddEmployeeModal({ open, onClose, businessId }) {
         onClose();
       }, 2000);
     } else {
-      setError(result.error || 'Failed to add employee.');
+      setError(result.error || "Failed to add employee.");
     }
   };
 
@@ -113,27 +113,33 @@ export default function AddEmployeeModal({ open, onClose, businessId }) {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-blue-700 mb-1">First Name</label>
+              <label className="block text-sm font-medium text-blue-700 mb-1">
+                First Name
+              </label>
               <input
                 className="w-full border border-blue-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 placeholder="John"
                 value={firstName}
-                onChange={e => setFirstName(e.target.value)}
+                onChange={(e) => setFirstName(e.target.value)}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-blue-700 mb-1">Last Name</label>
+              <label className="block text-sm font-medium text-blue-700 mb-1">
+                Last Name
+              </label>
               <input
                 className="w-full border border-blue-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 placeholder="Smith"
                 value={lastName}
-                onChange={e => setLastName(e.target.value)}
+                onChange={(e) => setLastName(e.target.value)}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-blue-700 mb-1">Date of Birth</label>
+              <label className="block text-sm font-medium text-blue-700 mb-1">
+                Date of Birth
+              </label>
               <input
                 className="w-full border border-blue-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 placeholder="MM/DD/YYYY"
@@ -144,49 +150,65 @@ export default function AddEmployeeModal({ open, onClose, businessId }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-blue-700 mb-1">Email Address</label>
+              <label className="block text-sm font-medium text-blue-700 mb-1">
+                Email Address
+              </label>
               <input
                 type="email"
                 className="w-full border border-blue-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 placeholder="example@email.com"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-blue-700 mb-1">Role</label>
+              <label className="block text-sm font-medium text-blue-700 mb-1">
+                Role
+              </label>
               <select
                 className="w-full border border-blue-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-100"
                 value={role}
-                onChange={e => setRole(e.target.value)}
+                onChange={(e) => setRole(e.target.value)}
                 required
                 disabled={loadingRoles}
               >
-                <option value="">{loadingRoles ? 'Loading roles...' : 'Select Role'}</option>
-                {roles.map(r => (
-                  <option key={r.role_id} value={r.role_id}>{r.role_name}</option>
+                <option value="">
+                  {loadingRoles ? "Loading roles..." : "Select Role"}
+                </option>
+                {roles.map((r) => (
+                  <option key={r.role_id} value={r.role_id}>
+                    {r.role_name}
+                  </option>
                 ))}
               </select>
-              {rolesError && <div className="text-xs text-red-500 mt-1">{rolesError}</div>}
+              {rolesError && (
+                <div className="text-xs text-red-500 mt-1">{rolesError}</div>
+              )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-blue-700 mb-1">Last 4 of SSN</label>
+              <label className="block text-sm font-medium text-blue-700 mb-1">
+                Last 4 of SSN
+              </label>
               <input
                 className="w-full border border-blue-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 placeholder="1234"
                 value={ssn}
-                onChange={e => setSsn(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onChange={(e) =>
+                  setSsn(e.target.value.replace(/\D/g, "").slice(0, 4))
+                }
                 maxLength={4}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-blue-700 mb-1">Employment Type</label>
+              <label className="block text-sm font-medium text-blue-700 mb-1">
+                Employment Type
+              </label>
               <select
                 className="w-full border border-blue-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 value={employmentType}
-                onChange={e => setEmploymentType(e.target.value)}
+                onChange={(e) => setEmploymentType(e.target.value)}
                 required
               >
                 <option value="">Select Employment Type</option>
@@ -209,7 +231,9 @@ export default function AddEmployeeModal({ open, onClose, businessId }) {
               className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg shadow flex items-center gap-2"
               disabled={loading}
             >
-              {loading && <span className="loader border-2 border-t-2 border-blue-200 border-t-blue-600 rounded-full w-4 h-4 animate-spin"></span>}
+              {loading && (
+                <span className="loader border-2 border-t-2 border-blue-200 border-t-blue-600 rounded-full w-4 h-4 animate-spin"></span>
+              )}
               Add Employee
             </button>
           </div>
@@ -217,4 +241,4 @@ export default function AddEmployeeModal({ open, onClose, businessId }) {
       </div>
     </div>
   );
-} 
+}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { getBusinessIdForCurrentUser } from '../roleUtils';
-import { supabase } from '../../../supabaseClient';
+import { useState, useEffect } from "react";
+import { getBusinessIdForCurrentUser } from "../roleUtils";
+import { supabase } from "../../../supabaseClient";
 
 export default function OnboardingEmailEditor() {
   const [businessId, setBusinessId] = useState(null);
@@ -10,30 +10,34 @@ export default function OnboardingEmailEditor() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showPreview, setShowPreview] = useState(false);
-  
+
   // Email template settings
   const [emailSettings, setEmailSettings] = useState({
-    subject: 'Welcome to {business_name}! Your Account is Ready',
-    greeting: 'Hi {first_name},',
-    welcomeMessage: 'Welcome to the team! We\'re excited to have you on board at {business_name}.',
-    accountMessage: 'Your account has been successfully created and you can now access our workforce management platform.',
+    subject: "Welcome to {business_name}! Your Account is Ready",
+    greeting: "Hi {first_name},",
+    welcomeMessage:
+      "Welcome to the team! We're excited to have you on board at {business_name}.",
+    accountMessage:
+      "Your account has been successfully created and you can now access our workforce management platform.",
     nextSteps: [
-      'Log in using your credentials above',
-      'Complete your profile setup',
-      'Review your schedule and upcoming shifts'
+      "Log in using your credentials above",
+      "Complete your profile setup",
+      "Review your schedule and upcoming shifts",
     ],
-    helpMessage: 'If you have any questions or need assistance getting started, please don\'t hesitate to reach out to your manager or our support team.',
-    footerMessage: 'This email was sent by ShiftSync on behalf of {business_name}.'
+    helpMessage:
+      "If you have any questions or need assistance getting started, please don't hesitate to reach out to your manager or our support team.",
+    footerMessage:
+      "This email was sent by ShiftSync on behalf of {business_name}.",
   });
 
   // Sample data for preview (with dynamic business name)
   const sampleData = {
-    first_name: 'Sarah',
-    last_name: 'Johnson',
-    business_name: businessInfo?.business_name || 'Your Business',
-    emp_id: 'EMP-2024-001'
+    first_name: "Sarah",
+    last_name: "Johnson",
+    business_name: businessInfo?.business_name || "Your Business",
+    emp_id: "EMP-2024-001",
   };
 
   // Function to replace variables in text
@@ -53,11 +57,11 @@ export default function OnboardingEmailEditor() {
     const accountMessage = replaceVariables(emailSettings.accountMessage);
     const helpMessage = replaceVariables(emailSettings.helpMessage);
     const footerMessage = replaceVariables(emailSettings.footerMessage);
-    
+
     const nextStepsHtml = emailSettings.nextSteps
-      .filter(step => step.trim())
-      .map(step => `<li>${replaceVariables(step)}</li>`)
-      .join('');
+      .filter((step) => step.trim())
+      .map((step) => `<li>${replaceVariables(step)}</li>`)
+      .join("");
 
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
@@ -92,14 +96,18 @@ export default function OnboardingEmailEditor() {
           </div>
 
           <!-- Next Steps -->
-          ${nextStepsHtml ? `
+          ${
+            nextStepsHtml
+              ? `
           <div style="margin: 0 0 30px 0;">
             <h3 style="margin: 0 0 15px 0; color: #111827; font-size: 16px; font-weight: 600;">Next Steps</h3>
             <ul style="margin: 0; padding-left: 20px; color: #374151;">
               ${nextStepsHtml}
             </ul>
           </div>
-          ` : ''}
+          `
+              : ""
+          }
 
           <!-- Help Message -->
           <p style="margin: 0 0 30px 0; font-size: 16px;">${helpMessage}</p>
@@ -124,25 +132,25 @@ export default function OnboardingEmailEditor() {
       try {
         const bId = await getBusinessIdForCurrentUser();
         setBusinessId(bId);
-        
+
         if (bId) {
           // Fetch business information
           const { data: businessData, error: businessError } = await supabase
-            .from('business')
-            .select('business_name, business_email')
-            .eq('business_id', bId)
+            .from("business")
+            .select("business_name, business_email")
+            .eq("business_id", bId)
             .single();
-          
+
           if (businessError) {
-            console.error('Error fetching business info:', businessError);
-            setError('Failed to fetch business information.');
+            console.error("Error fetching business info:", businessError);
+            setError("Failed to fetch business information.");
           } else {
             setBusinessInfo(businessData);
           }
         }
       } catch (err) {
-        console.error('Error in fetchBusinessInfo:', err);
-        setError('Failed to fetch business information.');
+        console.error("Error in fetchBusinessInfo:", err);
+        setError("Failed to fetch business information.");
       }
     }
     fetchBusinessInfo();
@@ -150,17 +158,17 @@ export default function OnboardingEmailEditor() {
 
   const handleSave = async () => {
     setSaving(true);
-    setError('');
+    setError("");
     setSuccess(false);
-    
+
     try {
       // TODO: Save email settings to database
       // For now, just simulate saving
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      setError('Failed to save email settings.');
+      setError("Failed to save email settings.");
     } finally {
       setSaving(false);
     }
@@ -168,37 +176,41 @@ export default function OnboardingEmailEditor() {
 
   const handleReset = () => {
     setEmailSettings({
-      subject: 'Welcome to {business_name}! Your Account is Ready',
-      greeting: 'Hi {first_name},',
-      welcomeMessage: 'Welcome to the team! We\'re excited to have you on board at {business_name}.',
-      accountMessage: 'Your account has been successfully created and you can now access our workforce management platform.',
+      subject: "Welcome to {business_name}! Your Account is Ready",
+      greeting: "Hi {first_name},",
+      welcomeMessage:
+        "Welcome to the team! We're excited to have you on board at {business_name}.",
+      accountMessage:
+        "Your account has been successfully created and you can now access our workforce management platform.",
       nextSteps: [
-        'Log in using your credentials above',
-        'Complete your profile setup',
-        'Review your schedule and upcoming shifts'
+        "Log in using your credentials above",
+        "Complete your profile setup",
+        "Review your schedule and upcoming shifts",
       ],
-      helpMessage: 'If you have any questions or need assistance getting started, please don\'t hesitate to reach out to your manager or our support team.',
-      footerMessage: 'This email was sent by ShiftSync on behalf of {business_name}.'
+      helpMessage:
+        "If you have any questions or need assistance getting started, please don't hesitate to reach out to your manager or our support team.",
+      footerMessage:
+        "This email was sent by ShiftSync on behalf of {business_name}.",
     });
   };
 
   const updateNextStep = (index, value) => {
     const newNextSteps = [...emailSettings.nextSteps];
     newNextSteps[index] = value;
-    setEmailSettings(prev => ({ ...prev, nextSteps: newNextSteps }));
+    setEmailSettings((prev) => ({ ...prev, nextSteps: newNextSteps }));
   };
 
   const addNextStep = () => {
-    setEmailSettings(prev => ({
+    setEmailSettings((prev) => ({
       ...prev,
-      nextSteps: [...prev.nextSteps, '']
+      nextSteps: [...prev.nextSteps, ""],
     }));
   };
 
   const removeNextStep = (index) => {
-    setEmailSettings(prev => ({
+    setEmailSettings((prev) => ({
       ...prev,
-      nextSteps: prev.nextSteps.filter((_, i) => i !== index)
+      nextSteps: prev.nextSteps.filter((_, i) => i !== index),
     }));
   };
 
@@ -206,19 +218,24 @@ export default function OnboardingEmailEditor() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Onboarding Email Template</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          Onboarding Email Template
+        </h3>
         <p className="text-sm text-gray-600">
-          Customize the email template that new employees receive when they're added to your business.
+          Customize the email template that new employees receive when they're
+          added to your business.
         </p>
       </div>
 
       {/* Success/Error Messages */}
       {success && (
         <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-700 text-sm">Email settings saved successfully!</p>
+          <p className="text-green-700 text-sm">
+            Email settings saved successfully!
+          </p>
         </div>
       )}
-      
+
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-red-700 text-sm">{error}</p>
@@ -229,7 +246,9 @@ export default function OnboardingEmailEditor() {
       <div className="flex items-center justify-between">
         <div>
           <h4 className="text-base font-medium text-gray-900">Email Preview</h4>
-          <p className="text-sm text-gray-600">See how your email will look to new employees</p>
+          <p className="text-sm text-gray-600">
+            See how your email will look to new employees
+          </p>
         </div>
         <button
           type="button"
@@ -237,15 +256,19 @@ export default function OnboardingEmailEditor() {
           className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
         >
           <svg
-            className={`w-4 h-4 transform transition-transform ${showPreview ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 transform transition-transform ${showPreview ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
             viewBox="0 0 24 24"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 9l-7 7-7-7"
+            />
           </svg>
-          {showPreview ? 'Hide Preview' : 'Show Preview'}
+          {showPreview ? "Hide Preview" : "Show Preview"}
         </button>
       </div>
 
@@ -253,14 +276,20 @@ export default function OnboardingEmailEditor() {
       {showPreview && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
           <div className="mb-4">
-            <h5 className="text-sm font-medium text-gray-700 mb-2">Subject: {replaceVariables(emailSettings.subject)}</h5>
+            <h5 className="text-sm font-medium text-gray-700 mb-2">
+              Subject: {replaceVariables(emailSettings.subject)}
+            </h5>
           </div>
-          <div 
+          <div
             className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
             dangerouslySetInnerHTML={{ __html: generatePreview() }}
           />
           <div className="mt-4 text-xs text-gray-500 text-center">
-            <p>This preview shows how the email will look with sample data: {sampleData.first_name} {sampleData.last_name} at {sampleData.business_name}</p>
+            <p>
+              This preview shows how the email will look with sample data:{" "}
+              {sampleData.first_name} {sampleData.last_name} at{" "}
+              {sampleData.business_name}
+            </p>
           </div>
         </div>
       )}
@@ -273,26 +302,37 @@ export default function OnboardingEmailEditor() {
         <input
           type="text"
           value={emailSettings.subject}
-          onChange={(e) => setEmailSettings(prev => ({ ...prev, subject: e.target.value }))}
+          onChange={(e) =>
+            setEmailSettings((prev) => ({ ...prev, subject: e.target.value }))
+          }
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           placeholder="Welcome to {business_name}! Your Account is Ready"
         />
         <p className="text-xs text-gray-500 mt-1">
-          Use {'{business_name}'} to include the business name dynamically
+          Use {"{business_name}"} to include the business name dynamically
         </p>
       </div>
 
       {/* Email Content */}
       <div className="space-y-4">
-        <label className="block text-sm font-medium text-gray-700">Email Content</label>
-        
+        <label className="block text-sm font-medium text-gray-700">
+          Email Content
+        </label>
+
         {/* Greeting */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Greeting</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Greeting
+          </label>
           <input
             type="text"
             value={emailSettings.greeting}
-            onChange={(e) => setEmailSettings(prev => ({ ...prev, greeting: e.target.value }))}
+            onChange={(e) =>
+              setEmailSettings((prev) => ({
+                ...prev,
+                greeting: e.target.value,
+              }))
+            }
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Hi {first_name},"
           />
@@ -300,10 +340,17 @@ export default function OnboardingEmailEditor() {
 
         {/* Welcome Message */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Welcome Message</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Welcome Message
+          </label>
           <textarea
             value={emailSettings.welcomeMessage}
-            onChange={(e) => setEmailSettings(prev => ({ ...prev, welcomeMessage: e.target.value }))}
+            onChange={(e) =>
+              setEmailSettings((prev) => ({
+                ...prev,
+                welcomeMessage: e.target.value,
+              }))
+            }
             rows={2}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Welcome to the team! We're excited to have you on board..."
@@ -312,10 +359,17 @@ export default function OnboardingEmailEditor() {
 
         {/* Account Message */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Account Message</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Account Message
+          </label>
           <textarea
             value={emailSettings.accountMessage}
-            onChange={(e) => setEmailSettings(prev => ({ ...prev, accountMessage: e.target.value }))}
+            onChange={(e) =>
+              setEmailSettings((prev) => ({
+                ...prev,
+                accountMessage: e.target.value,
+              }))
+            }
             rows={2}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Your account has been successfully created..."
@@ -324,7 +378,9 @@ export default function OnboardingEmailEditor() {
 
         {/* Next Steps */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-2">Next Steps</label>
+          <label className="block text-xs font-medium text-gray-600 mb-2">
+            Next Steps
+          </label>
           <div className="space-y-2">
             {emailSettings.nextSteps.map((step, index) => (
               <div key={index} className="flex gap-2">
@@ -357,10 +413,17 @@ export default function OnboardingEmailEditor() {
 
         {/* Help Message */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Help Message</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Help Message
+          </label>
           <textarea
             value={emailSettings.helpMessage}
-            onChange={(e) => setEmailSettings(prev => ({ ...prev, helpMessage: e.target.value }))}
+            onChange={(e) =>
+              setEmailSettings((prev) => ({
+                ...prev,
+                helpMessage: e.target.value,
+              }))
+            }
             rows={2}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="If you have any questions..."
@@ -369,11 +432,18 @@ export default function OnboardingEmailEditor() {
 
         {/* Footer Message */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Footer Message</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Footer Message
+          </label>
           <input
             type="text"
             value={emailSettings.footerMessage}
-            onChange={(e) => setEmailSettings(prev => ({ ...prev, footerMessage: e.target.value }))}
+            onChange={(e) =>
+              setEmailSettings((prev) => ({
+                ...prev,
+                footerMessage: e.target.value,
+              }))
+            }
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="This email was sent by ShiftSync on behalf of {business_name}."
           />
@@ -382,12 +452,28 @@ export default function OnboardingEmailEditor() {
 
       {/* Variables Help */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 className="text-sm font-medium text-blue-900 mb-2">Available Variables</h4>
+        <h4 className="text-sm font-medium text-blue-900 mb-2">
+          Available Variables
+        </h4>
         <div className="grid grid-cols-2 gap-2 text-xs text-blue-700">
-          <div><code className="bg-blue-100 px-1 rounded">{'{first_name}'}</code> - Employee's first name</div>
-          <div><code className="bg-blue-100 px-1 rounded">{'{last_name}'}</code> - Employee's last name</div>
-          <div><code className="bg-blue-100 px-1 rounded">{'{business_name}'}</code> - Your business name</div>
-          <div><code className="bg-blue-100 px-1 rounded">{'{emp_id}'}</code> - Employee ID</div>
+          <div>
+            <code className="bg-blue-100 px-1 rounded">{"{first_name}"}</code> -
+            Employee's first name
+          </div>
+          <div>
+            <code className="bg-blue-100 px-1 rounded">{"{last_name}"}</code> -
+            Employee's last name
+          </div>
+          <div>
+            <code className="bg-blue-100 px-1 rounded">
+              {"{business_name}"}
+            </code>{" "}
+            - Your business name
+          </div>
+          <div>
+            <code className="bg-blue-100 px-1 rounded">{"{emp_id}"}</code> -
+            Employee ID
+          </div>
         </div>
       </div>
 
@@ -399,7 +485,7 @@ export default function OnboardingEmailEditor() {
           disabled={saving}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {saving ? 'Saving...' : 'Save Changes'}
+          {saving ? "Saving..." : "Save Changes"}
         </button>
         <button
           type="button"
@@ -411,4 +497,4 @@ export default function OnboardingEmailEditor() {
       </div>
     </div>
   );
-} 
+}

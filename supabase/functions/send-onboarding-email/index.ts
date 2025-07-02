@@ -9,12 +9,12 @@ function withCors(response: Response): Response {
 }
 
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return withCors(new Response(null, { status: 204 }));
   }
 
-  if (req.method !== 'POST') {
-    return withCors(new Response('Method not allowed', { status: 405 }));
+  if (req.method !== "POST") {
+    return withCors(new Response("Method not allowed", { status: 405 }));
   }
 
   try {
@@ -23,7 +23,11 @@ serve(async (req: Request) => {
     // Support both direct onboarding and webhook event
     let first_name, email_address, emp_id, temp_password, business_name;
 
-    if ((payload.event === "user.confirmed" || payload.event === "user.email_confirmed") && payload.user) {
+    if (
+      (payload.event === "user.confirmed" ||
+        payload.event === "user.email_confirmed") &&
+      payload.user
+    ) {
       // Webhook from Supabase or Postgres trigger
       first_name = payload.user.user_metadata?.first_name || "there";
       email_address = payload.user.email;
@@ -85,12 +89,16 @@ serve(async (req: Request) => {
                   <div class="info-value">${emp_id}</div>
                 </div>
               </div>
-              ${temp_password ? `
+              ${
+                temp_password
+                  ? `
               <div class="highlight">
                 <strong>🔐 Temporary Password:</strong> ${temp_password}
                 <br><small style="color: #666;">Please change this password after your first login for security.</small>
               </div>
-              ` : ''}
+              `
+                  : ""
+              }
             </div>
 
             <div style="text-align: center;">
@@ -132,19 +140,26 @@ serve(async (req: Request) => {
 
     if (error) {
       console.error("Email error:", error);
-      return withCors(new Response(JSON.stringify({ error: error.message }), { status: 500 }));
+      return withCors(
+        new Response(JSON.stringify({ error: error.message }), { status: 500 }),
+      );
     }
 
-    return withCors(new Response(JSON.stringify({ success: true, data }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }));
+    return withCors(
+      new Response(JSON.stringify({ success: true, data }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
   } catch (err: unknown) {
-    console.error('Function error:', err);
-    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    return withCors(new Response(JSON.stringify({ error: errorMessage }), { 
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    }));
+    console.error("Function error:", err);
+    const errorMessage =
+      err instanceof Error ? err.message : "Unknown error occurred";
+    return withCors(
+      new Response(JSON.stringify({ error: errorMessage }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
   }
 });

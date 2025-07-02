@@ -37,8 +37,8 @@ const TooltipPortal = ({ children, anchorRef, visible }) => {
     >
       {children}
     </div>,
-    document.body
+    document.body,
   );
 };
 
-export default TooltipPortal; 
+export default TooltipPortal;

@@ -97,10 +97,10 @@ export default function BulkAddEmployeesForm() {
 
   const handleChange = (idx, field, value) => {
     setEmployees((prev) =>
-      prev.map((emp, i) => (i === idx ? { ...emp, [field]: value } : emp))
+      prev.map((emp, i) => (i === idx ? { ...emp, [field]: value } : emp)),
     );
     setErrors((prev) =>
-      prev.map((err, i) => (i === idx ? { ...err, [field]: undefined } : err))
+      prev.map((err, i) => (i === idx ? { ...err, [field]: undefined } : err)),
     );
   };
 
@@ -149,18 +149,28 @@ export default function BulkAddEmployeesForm() {
         } catch (err) {
           return { error: err.message || "Failed to add" };
         }
-      })
+      }),
     );
     setRowStatus(statuses);
     setLoading(false);
     // Reset successful rows
     const newEmployees = employees.map((emp, i) =>
       statuses[i].success
-        ? { firstName: "", lastName: "", dob: "", email: "", role: "", ssn: "", employmentType: "" }
-        : emp
+        ? {
+            firstName: "",
+            lastName: "",
+            dob: "",
+            email: "",
+            role: "",
+            ssn: "",
+            employmentType: "",
+          }
+        : emp,
     );
     setEmployees(newEmployees);
-    setErrors(statuses.map((s, i) => (statuses[i].success ? {} : errors[i] || {})));
+    setErrors(
+      statuses.map((s, i) => (statuses[i].success ? {} : errors[i] || {})),
+    );
     if (statuses.some((s) => s.success)) {
       setGlobalSuccess(true);
       setTimeout(() => setGlobalSuccess(false), 3000);
@@ -175,103 +185,164 @@ export default function BulkAddEmployeesForm() {
         </div>
       )}
       {employees.map((emp, idx) => (
-        <div key={idx} className="bg-blue-50/50 p-3 rounded-lg border border-blue-100 flex flex-col gap-2">
+        <div
+          key={idx}
+          className="bg-blue-50/50 p-3 rounded-lg border border-blue-100 flex flex-col gap-2"
+        >
           <div className="flex flex-col md:flex-row md:gap-4">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-blue-900 mb-1">First Name</label>
+              <label className="block text-sm font-medium text-blue-900 mb-1">
+                First Name
+              </label>
               <input
                 type="text"
-                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 ${errors[idx]?.firstName ? 'border-red-400' : 'border-blue-200'}`}
+                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 ${errors[idx]?.firstName ? "border-red-400" : "border-blue-200"}`}
                 value={emp.firstName}
                 onChange={(e) => handleChange(idx, "firstName", e.target.value)}
                 placeholder="John"
                 required
               />
-              {errors[idx]?.firstName && <div className="text-xs text-red-500 mt-1">{errors[idx].firstName}</div>}
+              {errors[idx]?.firstName && (
+                <div className="text-xs text-red-500 mt-1">
+                  {errors[idx].firstName}
+                </div>
+              )}
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium text-blue-900 mb-1">Last Name</label>
+              <label className="block text-sm font-medium text-blue-900 mb-1">
+                Last Name
+              </label>
               <input
                 type="text"
-                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 ${errors[idx]?.lastName ? 'border-red-400' : 'border-blue-200'}`}
+                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 ${errors[idx]?.lastName ? "border-red-400" : "border-blue-200"}`}
                 value={emp.lastName}
                 onChange={(e) => handleChange(idx, "lastName", e.target.value)}
                 placeholder="Smith"
                 required
               />
-              {errors[idx]?.lastName && <div className="text-xs text-red-500 mt-1">{errors[idx].lastName}</div>}
+              {errors[idx]?.lastName && (
+                <div className="text-xs text-red-500 mt-1">
+                  {errors[idx].lastName}
+                </div>
+              )}
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium text-blue-900 mb-1">Date of Birth</label>
+              <label className="block text-sm font-medium text-blue-900 mb-1">
+                Date of Birth
+              </label>
               <input
                 type="text"
-                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 ${errors[idx]?.dob ? 'border-red-400' : 'border-blue-200'}`}
+                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 ${errors[idx]?.dob ? "border-red-400" : "border-blue-200"}`}
                 value={emp.dob}
                 onChange={(e) => handleDobChange(idx, e.target.value)}
                 placeholder="MM/DD/YYYY"
                 maxLength={10}
                 required
               />
-              {errors[idx]?.dob && <div className="text-xs text-red-500 mt-1">{errors[idx].dob}</div>}
+              {errors[idx]?.dob && (
+                <div className="text-xs text-red-500 mt-1">
+                  {errors[idx].dob}
+                </div>
+              )}
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium text-blue-900 mb-1">Email</label>
+              <label className="block text-sm font-medium text-blue-900 mb-1">
+                Email
+              </label>
               <input
                 type="email"
-                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 ${errors[idx]?.email ? 'border-red-400' : 'border-blue-200'}`}
+                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 ${errors[idx]?.email ? "border-red-400" : "border-blue-200"}`}
                 value={emp.email}
                 onChange={(e) => handleChange(idx, "email", e.target.value)}
                 placeholder="email@example.com"
                 required
               />
-              {errors[idx]?.email && <div className="text-xs text-red-500 mt-1">{errors[idx].email}</div>}
+              {errors[idx]?.email && (
+                <div className="text-xs text-red-500 mt-1">
+                  {errors[idx].email}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex flex-col md:flex-row md:gap-4 mt-2 items-end">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-blue-900 mb-1">Role</label>
+              <label className="block text-sm font-medium text-blue-900 mb-1">
+                Role
+              </label>
               <select
-                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 ${errors[idx]?.role ? 'border-red-400' : 'border-blue-200'}`}
+                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 ${errors[idx]?.role ? "border-red-400" : "border-blue-200"}`}
                 value={emp.role}
                 onChange={(e) => handleChange(idx, "role", e.target.value)}
                 required
                 disabled={loadingRoles}
               >
-                <option value="">{loadingRoles ? "Loading roles..." : "Select Role"}</option>
+                <option value="">
+                  {loadingRoles ? "Loading roles..." : "Select Role"}
+                </option>
                 {roles.map((role) => (
-                  <option key={role.role_id} value={role.role_id}>{role.role_name}</option>
+                  <option key={role.role_id} value={role.role_id}>
+                    {role.role_name}
+                  </option>
                 ))}
               </select>
-              {rolesError && <div className="text-xs text-red-500 mt-1">{rolesError}</div>}
-              {errors[idx]?.role && <div className="text-xs text-red-500 mt-1">{errors[idx].role}</div>}
+              {rolesError && (
+                <div className="text-xs text-red-500 mt-1">{rolesError}</div>
+              )}
+              {errors[idx]?.role && (
+                <div className="text-xs text-red-500 mt-1">
+                  {errors[idx].role}
+                </div>
+              )}
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium text-blue-900 mb-1">Last 4 of SSN</label>
+              <label className="block text-sm font-medium text-blue-900 mb-1">
+                Last 4 of SSN
+              </label>
               <input
                 type="text"
-                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 ${errors[idx]?.ssn ? 'border-red-400' : 'border-blue-200'}`}
+                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 ${errors[idx]?.ssn ? "border-red-400" : "border-blue-200"}`}
                 value={emp.ssn}
-                onChange={(e) => handleChange(idx, "ssn", e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onChange={(e) =>
+                  handleChange(
+                    idx,
+                    "ssn",
+                    e.target.value.replace(/\D/g, "").slice(0, 4),
+                  )
+                }
                 placeholder="1234"
                 maxLength={4}
                 required
               />
-              {errors[idx]?.ssn && <div className="text-xs text-red-500 mt-1">{errors[idx].ssn}</div>}
+              {errors[idx]?.ssn && (
+                <div className="text-xs text-red-500 mt-1">
+                  {errors[idx].ssn}
+                </div>
+              )}
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium text-blue-900 mb-1">Employment Type</label>
+              <label className="block text-sm font-medium text-blue-900 mb-1">
+                Employment Type
+              </label>
               <select
-                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 ${errors[idx]?.employmentType ? 'border-red-400' : 'border-blue-200'}`}
+                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 ${errors[idx]?.employmentType ? "border-red-400" : "border-blue-200"}`}
                 value={emp.employmentType}
-                onChange={(e) => handleChange(idx, "employmentType", e.target.value)}
+                onChange={(e) =>
+                  handleChange(idx, "employmentType", e.target.value)
+                }
                 required
               >
                 <option value="">Select Employment Type</option>
                 {EMPLOYMENT_TYPES.map((type) => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
                 ))}
               </select>
-              {errors[idx]?.employmentType && <div className="text-xs text-red-500 mt-1">{errors[idx].employmentType}</div>}
+              {errors[idx]?.employmentType && (
+                <div className="text-xs text-red-500 mt-1">
+                  {errors[idx].employmentType}
+                </div>
+              )}
             </div>
             <button
               type="button"
@@ -284,7 +355,9 @@ export default function BulkAddEmployeesForm() {
             </button>
           </div>
           {rowStatus[idx]?.error && (
-            <div className="text-red-600 text-xs mt-2">{rowStatus[idx].error}</div>
+            <div className="text-red-600 text-xs mt-2">
+              {rowStatus[idx].error}
+            </div>
           )}
         </div>
       ))}
@@ -307,4 +380,4 @@ export default function BulkAddEmployeesForm() {
       </div>
     </form>
   );
-} 
+}
