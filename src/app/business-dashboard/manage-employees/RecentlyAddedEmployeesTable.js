@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { supabase } from '../../../supabaseClient';
-import { getBusinessIdForCurrentUser } from '../roleUtils';
+import { useState, useEffect } from "react";
+import { supabase } from "../../../supabaseClient";
+import { getBusinessIdForCurrentUser } from "../roleUtils";
 
 export default function RecentlyAddedEmployeesTable() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [businessId, setBusinessId] = useState(null);
   const [sendingOnboarding, setSendingOnboarding] = useState({});
 
@@ -17,7 +17,7 @@ export default function RecentlyAddedEmployeesTable() {
         const bId = await getBusinessIdForCurrentUser();
         setBusinessId(bId);
       } catch (err) {
-        setError('Failed to fetch business information.');
+        setError("Failed to fetch business information.");
         setLoading(false);
       }
     }
@@ -29,20 +29,22 @@ export default function RecentlyAddedEmployeesTable() {
 
     async function fetchRecentEmployees() {
       setLoading(true);
-      setError('');
-      
+      setError("");
+
       try {
-        const response = await fetch(`/api/get-employees?businessId=${businessId}`);
+        const response = await fetch(
+          `/api/get-employees?businessId=${businessId}`,
+        );
         const result = await response.json();
-        
+
         if (!result.success) {
-          throw new Error(result.error || 'Failed to fetch employees');
+          throw new Error(result.error || "Failed to fetch employees");
         }
-        
+
         setEmployees(result.employees || []);
       } catch (err) {
-        console.error('Error fetching employees:', err);
-        setError('Failed to load recent employees.');
+        console.error("Error fetching employees:", err);
+        setError("Failed to load recent employees.");
       } finally {
         setLoading(false);
       }
@@ -52,74 +54,79 @@ export default function RecentlyAddedEmployeesTable() {
   }, [businessId]);
 
   const sendOnboardingEmail = async (employee) => {
-    setSendingOnboarding(prev => ({ ...prev, [employee.emp_id]: true }));
-    
+    setSendingOnboarding((prev) => ({ ...prev, [employee.emp_id]: true }));
+
     try {
       // Generate temp password using the same logic as add-employee API and login function
       // Parse date more explicitly to avoid timezone issues
-      const [year, month, day] = employee.dob.split('-').map(Number);
-      const tempPassword = `${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}${String(year).slice(-2)}${employee.last4ssn}`;
-      
+      const [year, month, day] = employee.dob.split("-").map(Number);
+      const tempPassword = `${String(month).padStart(2, "0")}${String(day).padStart(2, "0")}${String(year).slice(-2)}${employee.last4ssn}`;
+
       // First, update the user metadata with the correct password
-      const updateResponse = await fetch('/api/update-employee-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emp_id: employee.emp_id })
+      const updateResponse = await fetch("/api/update-employee-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emp_id: employee.emp_id }),
       });
-      
+
       const updateResult = await updateResponse.json();
       if (!updateResult.success) {
-        console.error('Error updating password:', updateResult.error);
+        console.error("Error updating password:", updateResult.error);
       }
-      
-      const response = await fetch('/api/send-onboarding-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+
+      const response = await fetch("/api/send-onboarding-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           first_name: employee.first_name,
           email_address: employee.email_address,
           emp_id: employee.emp_id,
-          temp_password: tempPassword
+          temp_password: tempPassword,
           // business_name will be fetched by the API route
-        })
+        }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
-        setEmployees(prev => prev.map(emp => 
-          emp.emp_id === employee.emp_id 
-            ? { ...emp, onboarding_sent: true }
-            : emp
-        ));
+        setEmployees((prev) =>
+          prev.map((emp) =>
+            emp.emp_id === employee.emp_id
+              ? { ...emp, onboarding_sent: true }
+              : emp,
+          ),
+        );
       } else {
-        alert('Failed to send onboarding email: ' + (result.error || 'Unknown error'));
+        alert(
+          "Failed to send onboarding email: " +
+            (result.error || "Unknown error"),
+        );
       }
     } catch (err) {
-      console.error('Error sending onboarding email:', err);
-      alert('Failed to send onboarding email');
+      console.error("Error sending onboarding email:", err);
+      alert("Failed to send onboarding email");
     } finally {
-      setSendingOnboarding(prev => ({ ...prev, [employee.emp_id]: false }));
+      setSendingOnboarding((prev) => ({ ...prev, [employee.emp_id]: false }));
     }
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const formatDOB = (dob) => {
-    if (!dob) return 'N/A';
-    return new Date(dob).toLocaleDateString('en-US', {
-      month: '2-digit',
-      day: '2-digit',
-      year: 'numeric'
+    if (!dob) return "N/A";
+    return new Date(dob).toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
     });
   };
 
@@ -153,10 +160,14 @@ export default function RecentlyAddedEmployeesTable() {
   return (
     <div className="rounded-lg bg-white shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Recently Added Employees</h3>
-        <p className="text-sm text-gray-500 mt-1">Latest 10 employees added to your business</p>
+        <h3 className="text-lg font-semibold text-gray-900">
+          Recently Added Employees
+        </h3>
+        <p className="text-sm text-gray-500 mt-1">
+          Latest 10 employees added to your business
+        </p>
       </div>
-      
+
       {employees.length === 0 ? (
         <div className="p-6 text-center text-gray-500">
           <p>No employees found. Add your first employee to get started!</p>
@@ -197,7 +208,8 @@ export default function RecentlyAddedEmployeesTable() {
                       <div className="flex-shrink-0 h-10 w-10">
                         <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                           <span className="text-sm font-medium text-blue-600">
-                            {employee.first_name?.[0]}{employee.last_name?.[0]}
+                            {employee.first_name?.[0]}
+                            {employee.last_name?.[0]}
                           </span>
                         </div>
                       </div>
@@ -212,21 +224,27 @@ export default function RecentlyAddedEmployeesTable() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{employee.email_address}</div>
-                    <div className="text-sm text-gray-500">DOB: {formatDOB(employee.dob)}</div>
+                    <div className="text-sm text-gray-900">
+                      {employee.email_address}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      DOB: {formatDOB(employee.dob)}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {employee.roles?.role_name || 'Unknown'}
+                      {employee.roles?.role_name || "Unknown"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      employee.email_confirmed 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {employee.email_confirmed ? 'Confirmed' : 'Pending'}
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        employee.email_confirmed
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {employee.email_confirmed ? "Confirmed" : "Pending"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -240,7 +258,9 @@ export default function RecentlyAddedEmployeesTable() {
                         disabled={sendingOnboarding[employee.emp_id]}
                         className="inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {sendingOnboarding[employee.emp_id] ? 'Sending...' : 'Send'}
+                        {sendingOnboarding[employee.emp_id]
+                          ? "Sending..."
+                          : "Send"}
                       </button>
                     )}
                     {employee.onboarding_sent && (
@@ -249,17 +269,21 @@ export default function RecentlyAddedEmployeesTable() {
                         disabled={sendingOnboarding[employee.emp_id]}
                         className="ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {sendingOnboarding[employee.emp_id] ? 'Sending...' : 'Resend'}
+                        {sendingOnboarding[employee.emp_id]
+                          ? "Sending..."
+                          : "Resend"}
                       </button>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      employee.is_active 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {employee.is_active ? 'Active' : 'Inactive'}
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        employee.is_active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {employee.is_active ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -273,4 +297,4 @@ export default function RecentlyAddedEmployeesTable() {
       )}
     </div>
   );
-} 
+}

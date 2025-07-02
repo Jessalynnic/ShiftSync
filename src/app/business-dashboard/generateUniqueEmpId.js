@@ -1,4 +1,4 @@
-import { supabase } from '../../supabaseClient';
+import { supabase } from "../../supabaseClient";
 
 export default async function generateUniqueEmpId() {
   let isUnique = false;
@@ -10,12 +10,12 @@ export default async function generateUniqueEmpId() {
 
     // Check if emp_id already exists
     const { data, error } = await supabase
-      .from('employee')
-      .select('emp_id')
-      .eq('emp_id', emp_id)
+      .from("employee")
+      .select("emp_id")
+      .eq("emp_id", emp_id)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
+    if (error && error.code !== "PGRST116") {
       // Not found error is expected if the ID is unique
       throw error;
     }
@@ -26,4 +26,4 @@ export default async function generateUniqueEmpId() {
   }
 
   return emp_id;
-} 
+}

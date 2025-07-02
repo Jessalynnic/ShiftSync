@@ -1,38 +1,48 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { Resend } from "resend";
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { first_name, email_address, emp_id, temp_password, business_name } = body;
+    const { first_name, email_address, emp_id, temp_password, business_name } =
+      body;
 
     if (!first_name || !email_address || !emp_id) {
-      return NextResponse.json({ success: false, error: 'Missing required fields.' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Missing required fields." },
+        { status: 400 },
+      );
     }
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
     );
 
     // Fetch the actual business name from the database
     const { data: employeeData, error: employeeError } = await supabase
-      .from('employee')
-      .select(`
+      .from("employee")
+      .select(
+        `
         business_id,
         last_name,
         business(business_name)
-      `)
-      .eq('emp_id', emp_id)
+      `,
+      )
+      .eq("emp_id", emp_id)
       .single();
 
     if (employeeError) {
-      console.error('Error fetching employee data:', employeeError);
-      return NextResponse.json({ success: false, error: 'Failed to fetch employee data.' }, { status: 500 });
+      console.error("Error fetching employee data:", employeeError);
+      return NextResponse.json(
+        { success: false, error: "Failed to fetch employee data." },
+        { status: 500 },
+      );
     }
 
-    const actualBusinessName = employeeData.business?.business_name || business_name || 'ShiftSync';
+    const actualBusinessName =
+      employeeData.business?.business_name || business_name || "ShiftSync";
 
     // Try Edge Function first, then fallback to direct Resend
     let emailSent = false;
@@ -43,24 +53,24 @@ export async function POST(request) {
       const res = await fetch(
         `https://${process.env.NEXT_PUBLIC_SUPABASE_PROJECT_REF}.functions.supabase.co/send-onboarding-email`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
           },
-          body: JSON.stringify({ 
-            first_name, 
-            email_address, 
-            emp_id, 
-            temp_password, 
-            business_name: actualBusinessName 
+          body: JSON.stringify({
+            first_name,
+            email_address,
+            emp_id,
+            temp_password,
+            business_name: actualBusinessName,
           }),
-        }
+        },
       );
 
       let data;
       const responseText = await res.text();
-      
+
       try {
         data = JSON.parse(responseText);
         if (res.ok && data.success) {
@@ -77,7 +87,7 @@ export async function POST(request) {
     if (!emailSent) {
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        
+
         const html = `
           <!DOCTYPE html>
           <html lang="en">
@@ -123,12 +133,16 @@ export async function POST(request) {
                       <div class="info-value">${emp_id}</div>
                     </div>
                   </div>
-                  ${temp_password ? `
+                  ${
+                    temp_password
+                      ? `
                   <div class="highlight">
                     <strong>🔐 Temporary Password:</strong> ${temp_password}
                     <br><small style="color: #666;">Please change this password after your first login for security.</small>
                   </div>
-                  ` : ''}
+                  `
+                      : ""
+                  }
                 </div>
 
                 <div style="text-align: center;">
@@ -171,59 +185,69 @@ export async function POST(request) {
         }
 
         emailSent = true;
-        console.log('Email sent via fallback Resend service');
+        console.log("Email sent via fallback Resend service");
       } catch (resendError) {
-        console.error('Fallback email error:', resendError);
+        console.error("Fallback email error:", resendError);
         if (edgeFunctionError) {
-          console.error('Original Edge Function error:', edgeFunctionError);
+          console.error("Original Edge Function error:", edgeFunctionError);
         }
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Failed to send onboarding email. Both Edge Function and fallback service failed.' 
-        }, { status: 500 });
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "Failed to send onboarding email. Both Edge Function and fallback service failed.",
+          },
+          { status: 500 },
+        );
       }
     }
 
     // Record that the onboarding email was sent
     const { error: updateError } = await supabase
-      .from('employee')
+      .from("employee")
       .update({ onboarding_email_sent_at: new Date().toISOString() })
-      .eq('emp_id', emp_id);
+      .eq("emp_id", emp_id);
 
     if (updateError) {
-      console.error('Error updating onboarding email status:', updateError);
+      console.error("Error updating onboarding email status:", updateError);
       // Don't fail the request, just log the error
     }
 
     // Log activity: onboarding email sent
     try {
       const { data: activityData, error: activityError } = await supabase
-        .from('activity_log')
+        .from("activity_log")
         .insert({
           business_id: employeeData.business_id,
           user_id: null,
-          type: 'email',
+          type: "email",
           description: `Sent onboarding email to ${first_name} ${employeeData.last_name} (${emp_id})`,
           employee_id: emp_id,
-          metadata: { 
-            action: 'onboarding_email_sent',
+          metadata: {
+            action: "onboarding_email_sent",
             email_address: email_address,
-            method: emailSent ? 'edge_function' : 'fallback_resend'
-          }
+            method: emailSent ? "edge_function" : "fallback_resend",
+          },
         })
         .select();
 
       if (activityError) {
-        console.error('Activity logging error:', activityError);
+        console.error("Activity logging error:", activityError);
       }
     } catch (err) {
       // Log but don't block the response
-      console.error('Failed to log onboarding email activity:', err);
+      console.error("Failed to log onboarding email activity:", err);
     }
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('API error:', err);
-    return NextResponse.json({ success: false, error: err.message || 'Failed to send onboarding email.' }, { status: 500 });
+    console.error("API error:", err);
+    return NextResponse.json(
+      {
+        success: false,
+        error: err.message || "Failed to send onboarding email.",
+      },
+      { status: 500 },
+    );
   }
-} 
+}
