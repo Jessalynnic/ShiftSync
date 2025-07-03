@@ -13,6 +13,7 @@ import ShiftSelectionPopover from "./components/ShiftSelectionPopover";
 import DefaultShiftsEditor from "./components/DefaultShiftsEditor";
 import DefaultShiftsChipsRow from "./components/DefaultShiftsChipsRow";
 import ConflictNotification from "./components/ConflictNotification";
+import ExportScheduleModal from "./components/ExportScheduleModal";
 import {
   getStartOfWeek,
   getWeekDates,
@@ -59,6 +60,7 @@ function SchedulePage() {
   const [defaultShifts, setDefaultShifts] = useState([]);
   const [editMode, setEditMode] = useState(false);
   const [existingSchedule, setExistingSchedule] = useState(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   useEffect(() => {
     async function initializeBusinessId() {
@@ -872,34 +874,48 @@ function SchedulePage() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
-              {existingSchedule && !editMode ? (
-                <button
-                  onClick={() => setEditMode(true)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                >
-                  Edit Schedule
-                </button>
-              ) : (
-                <button
-                  onClick={
-                    existingSchedule
-                      ? async () => {
-                          await handleUpdateSchedule();
-                          setEditMode(false);
-                        }
-                      : handleCreateSchedule
-                  }
-                  disabled={isCreating || isUpdating}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium"
-                >
-                  {isCreating || isUpdating
-                    ? "Saving..."
-                    : existingSchedule
-                      ? "Save Changes"
-                      : "Create Schedule"}
-                </button>
-              )}
+            <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+              {/* Export Button */}
+              <button
+                onClick={() => setExportModalOpen(true)}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export Schedule
+              </button>
+
+              {/* Save/Edit Buttons */}
+              <div className="flex gap-4">
+                {existingSchedule && !editMode ? (
+                  <button
+                    onClick={() => setEditMode(true)}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Edit Schedule
+                  </button>
+                ) : (
+                  <button
+                    onClick={
+                      existingSchedule
+                        ? async () => {
+                            await handleUpdateSchedule();
+                            setEditMode(false);
+                          }
+                        : handleCreateSchedule
+                    }
+                    disabled={isCreating || isUpdating}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium"
+                  >
+                    {isCreating || isUpdating
+                      ? "Saving..."
+                      : existingSchedule
+                        ? "Save Changes"
+                        : "Create Schedule"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -925,6 +941,17 @@ function SchedulePage() {
         employee={shiftPopover.employee}
         dayKey={shiftPopover.dayKey}
         defaultShifts={defaultShifts}
+      />
+
+      {/* Export Schedule Modal */}
+      <ExportScheduleModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        employeeAssignments={employeeAssignments}
+        shiftAssignments={shiftAssignments}
+        dates={dates}
+        employees={employees}
+        currentWeek={currentWeek}
       />
 
       {sidebarOpen && (

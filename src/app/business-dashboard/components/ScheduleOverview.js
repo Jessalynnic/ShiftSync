@@ -355,7 +355,10 @@ const ScheduleOverview = ({ businessId }) => {
           </button>
         )}
 
-        <button className="px-5 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-semibold shadow">
+        <button 
+          onClick={() => window.location.href = "/business-dashboard/schedule"}
+          className="px-5 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-semibold shadow"
+        >
           Export Schedule
         </button>
       </div>
