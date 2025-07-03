@@ -51,9 +51,10 @@ export const calculateHoursDifference = (startTime, endTime) => {
   return Math.round((diff / 60) * 100) / 100;
 };
 
-export const getTotalHoursColor = (total, max) => {
-  if (total > max) return "text-red-600";
-  if (total > max * 0.9) return "text-yellow-600";
+export const getTotalHoursColor = (totalHours, maxHours) => {
+  const percentage = (totalHours / maxHours) * 100;
+  if (percentage >= 90) return "text-red-600";
+  if (percentage >= 75) return "text-yellow-600";
   return "text-green-600";
 };
 
@@ -133,4 +134,123 @@ export const checkAvailabilityConflict = (employee, shiftTime, dayOfWeek) => {
   }
 
   return { hasConflict: false, message: null };
+};
+
+// Export utility functions
+export const exportScheduleToCSV = (employeeAssignments, shiftAssignments, dates, employees) => {
+  const csvData = [];
+  
+  // Add header row
+  const header = ['Employee', 'Role', 'Date', 'Day', 'Start Time', 'End Time', 'Hours', 'Shift Title'];
+  csvData.push(header.join(','));
+  
+  // Add data rows
+  Object.entries(employeeAssignments).forEach(([cellId, employee]) => {
+    const shift = shiftAssignments[cellId];
+    if (employee && shift) {
+      const [rowIndex, dayKey] = cellId.split('::');
+      const date = new Date(dayKey);
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+      
+      let startTime = '', endTime = '', hours = 0;
+      if (typeof shift === 'string') {
+        [startTime, endTime] = shift.split(' - ');
+        hours = calculateHoursDifference(convertTo24HourFormat(startTime), convertTo24HourFormat(endTime));
+      } else if (shift.startTime && shift.endTime) {
+        startTime = formatTime(shift.startTime);
+        endTime = formatTime(shift.endTime);
+        hours = calculateHoursDifference(shift.startTime, shift.endTime);
+      }
+      
+      const row = [
+        `${employee.first_name} ${employee.last_name}`,
+        employee.role_name || 'Unknown Role',
+        date.toLocaleDateString('en-US'),
+        dayName,
+        startTime,
+        endTime,
+        hours.toFixed(2),
+        shift.title || ''
+      ];
+      csvData.push(row.join(','));
+    }
+  });
+  
+  return csvData.join('\n');
+};
+
+export const exportScheduleToPDF = async (employeeAssignments, shiftAssignments, dates, employees, businessName = 'Business') => {
+  // This would require a PDF library like jsPDF
+  // For now, we'll return a placeholder
+  return 'PDF export functionality requires jsPDF library';
+};
+
+export const downloadCSV = (csvContent, filename) => {
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+export const generateScheduleSummary = (employeeAssignments, shiftAssignments, dates) => {
+  const summary = {
+    totalShifts: 0,
+    totalHours: 0,
+    employeeHours: {},
+    dayBreakdown: {},
+    roleBreakdown: {}
+  };
+  
+  Object.entries(employeeAssignments).forEach(([cellId, employee]) => {
+    const shift = shiftAssignments[cellId];
+    if (employee && shift) {
+      summary.totalShifts++;
+      
+      let hours = 0;
+      if (typeof shift === 'string') {
+        const [startTime, endTime] = shift.split(' - ');
+        hours = calculateHoursDifference(convertTo24HourFormat(startTime), convertTo24HourFormat(endTime));
+      } else if (shift.startTime && shift.endTime) {
+        hours = calculateHoursDifference(shift.startTime, shift.endTime);
+      }
+      
+      summary.totalHours += hours;
+      
+      // Employee hours
+      if (!summary.employeeHours[employee.emp_id]) {
+        summary.employeeHours[employee.emp_id] = {
+          name: `${employee.first_name} ${employee.last_name}`,
+          hours: 0,
+          shifts: 0
+        };
+      }
+      summary.employeeHours[employee.emp_id].hours += hours;
+      summary.employeeHours[employee.emp_id].shifts++;
+      
+      // Day breakdown
+      const [rowIndex, dayKey] = cellId.split('::');
+      const date = new Date(dayKey);
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+      if (!summary.dayBreakdown[dayName]) {
+        summary.dayBreakdown[dayName] = { hours: 0, shifts: 0 };
+      }
+      summary.dayBreakdown[dayName].hours += hours;
+      summary.dayBreakdown[dayName].shifts++;
+      
+      // Role breakdown
+      const roleName = employee.role_name || 'Unknown Role';
+      if (!summary.roleBreakdown[roleName]) {
+        summary.roleBreakdown[roleName] = { hours: 0, shifts: 0 };
+      }
+      summary.roleBreakdown[roleName].hours += hours;
+      summary.roleBreakdown[roleName].shifts++;
+    }
+  });
+  
+  return summary;
 };
