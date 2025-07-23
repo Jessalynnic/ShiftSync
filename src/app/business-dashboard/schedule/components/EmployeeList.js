@@ -63,14 +63,8 @@ const EmployeeList = ({
       return `Today: ${formatTime(todayAvailability.start_time)} - ${formatTime(todayAvailability.end_time)}`;
     }
 
-    // Show availability summary
-    const availableDays = employee.availability.length;
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const availableDayNames = employee.availability
-      .map((avail) => dayNames[avail.day_of_week])
-      .join(", ");
-
-    return `${availableDays} days: ${availableDayNames}`;
+    // If not available today, show 'Not available' instead of available days
+    return 'Not available';
   };
 
   return (
@@ -178,7 +172,7 @@ const EmployeeList = ({
                         onMouseEnter={() => setHoveredEmpId(employee.emp_id)}
                         onMouseLeave={() => setHoveredEmpId(null)}
                       >
-                        <div className="text-xs text-green-600 text-right max-w-24 cursor-help">
+                        <div className={`text-xs text-right max-w-24 cursor-help ${availabilityText === 'Not available' ? 'text-red-500' : 'text-green-600'}`}>
                           {availabilityText}
                         </div>
                         <TooltipPortal

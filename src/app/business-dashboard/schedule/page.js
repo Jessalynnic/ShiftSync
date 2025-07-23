@@ -87,6 +87,7 @@ function SchedulePage() {
         const weekStartDate = getStartOfWeek(currentWeek)
           .toISOString()
           .split("T")[0];
+        console.log("Querying schedule for weekStartDate:", weekStartDate);
         const { data: schedule, error: scheduleError } = await supabase
           .from("schedule")
           .select("schedule_id")
