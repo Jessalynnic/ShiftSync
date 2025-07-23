@@ -9,6 +9,7 @@ import DashboardHeader from "./components/DashboardHeader";
 import DashboardFooter from "./components/DashboardFooter";
 import ScheduleOverview from "./components/ScheduleOverview";
 import Image from "next/image";
+import { getStartOfWeek } from './schedule/scheduleUtils';
 
 // Placeholder SVG icons (Heroicons/Material)
 const UsersIcon = () => (
@@ -283,6 +284,8 @@ export default function BusinessDashboard() {
     useState(false);
   const [showProfileSuccessBanner, setShowProfileSuccessBanner] =
     useState(false);
+  const [shiftDrawerOpen, setShiftDrawerOpen] = useState(false);
+  const [employees, setEmployees] = useState([]);
 
   // Check if user needs to complete profile
   useEffect(() => {
@@ -452,6 +455,20 @@ export default function BusinessDashboard() {
   const dismissProfileSuccess = () => {
     setShowProfileSuccessBanner(false);
   };
+
+  useEffect(() => {
+    if (!businessId) return;
+    async function fetchEmployees() {
+      try {
+        const res = await fetch(`/api/get-employees?businessId=${businessId}`);
+        const data = await res.json();
+        if (data.success) setEmployees(data.employees);
+      } catch (err) {
+        console.error('Failed to fetch employees:', err);
+      }
+    }
+    fetchEmployees();
+  }, [businessId]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -739,13 +756,6 @@ export default function BusinessDashboard() {
                 <span className="text-xl font-bold text-blue-800 mb-2">
                   Quick Actions
                 </span>
-                <button
-                  className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-full py-2 px-6 transition-all shadow"
-                  onClick={() => setAddEmpModalOpen(true)}
-                >
-                  <CalendarIcon />
-                  Create Shift
-                </button>
                 <button
                   className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-full py-2 px-6 transition-all shadow"
                   onClick={() => setAddEmpModalOpen(true)}
